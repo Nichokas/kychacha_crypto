@@ -14,7 +14,7 @@ pub fn encryption_bench(c: &mut Criterion) {
 }
 
 pub fn decryption_bench(c: &mut Criterion) {
-    let test_secret = EphemeralSecret::random();
+    EphemeralSecret::random();
     
     let static_secret_base64 = "gvDEoSbdLpuRZfBwiQoTF1iSvHDt1MBx1dnqsUsgqvw=";
     let static_secret_bytes = general_purpose::STANDARD.decode(static_secret_base64)
@@ -24,7 +24,7 @@ pub fn decryption_bench(c: &mut Criterion) {
 
     let static_secret = StaticSecret::from(static_secret_arr);
     
-    c.bench_function("encryption", |b| {
+    c.bench_function("decryption", |b| {
         b.iter(|| {
             black_box(decrypt(r#"{"ephemeral_public":"ZoBZC5w8AHUAb1+soCkWGZuxfuwkhoNuIfKv5Ej1IRs=","nonce":"xgTfn/wSOZ0FYDJj","ciphertext":"apgXRjjICkLMvu7MF0ggKogdleopTO1eAoUHf+hdtg=="}"#, static_secret.clone()).unwrap());
         })
