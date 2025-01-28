@@ -8,9 +8,7 @@ use hkdf::Hkdf;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret, StaticSecret};
-use anyhow::{bail, Context, Result};
-use thiserror::Error;
-
+use anyhow::{Context, Result};
 
 #[derive(Serialize, Deserialize)]
 struct EncryptedData {
@@ -37,7 +35,7 @@ fn encrypt(static_public: PublicKey, message: &[u8]) -> Result<String> {
     let mut cipher = ChaCha20Poly1305::new_from_slice(&okm).context("Failed to create cipher instance")?;
 
     let mut buffer = message.to_vec();
-    cipher.encrypt_in_place(&nonce, b"", &mut buffer).map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;;
+    cipher.encrypt_in_place(&nonce, b"", &mut buffer).map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
 
     let encrypted_data = EncryptedData {
         ephemeral_public: general_purpose::STANDARD.encode(ephemeral_public.as_bytes()),
@@ -45,7 +43,7 @@ fn encrypt(static_public: PublicKey, message: &[u8]) -> Result<String> {
         ciphertext: general_purpose::STANDARD.encode(buffer),
     };
 
-    Ok(serde_json::to_string(&encrypted_data).context("Failed to serialize encrypted data"))
+    serde_json::to_string(&encrypted_data).context("Failed to serialize encrypted data")
 }
 
 
@@ -73,7 +71,7 @@ fn main() -> Result<()> {
     let static_secret = StaticSecret::random_from_rng(OsRng);
     let static_public:PublicKey=PublicKey::from(&static_secret);
 
-    let encrypted_message = encrypt(static_public, b"Hii! bytedream :3");
+    let encrypted_message = encrypt(static_public, b"Hii! bytedream :3")?;
     println!("{}", encrypted_message);
 
     let decrypted = decrypt(&encrypted_message, static_secret);
