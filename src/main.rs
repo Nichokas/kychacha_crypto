@@ -19,7 +19,7 @@ struct EncryptedData {
 fn derive_chacha_key(shared_secret:SharedSecret, salt:Option<&[u8]>) -> [u8; 32] {
     let hk = Hkdf::<Sha256>::new(salt, shared_secret.as_bytes());
     let mut okm = [0u8; 32];
-    hk.expand("&chacha-encryption".as_ref(), &mut okm)
+    hk.expand(b"chacha-encryption-v1", &mut okm)
         .expect("sos");
     okm
 }
@@ -46,7 +46,7 @@ fn encrypt(static_public: PublicKey, message: &[u8]) -> String {
 }
 
 
-fn decrypt(encrypted_data: &str, static_secret: StaticSecret, _static_public: PublicKey) -> String {
+fn decrypt(encrypted_data: &str, static_secret: StaticSecret) -> String {
     let data: EncryptedData = serde_json::from_str(encrypted_data).expect("Invalid JSON");
 
     let ephemeral_public = general_purpose::STANDARD.decode(&data.ephemeral_public).expect("Invalid base64");
@@ -66,13 +66,13 @@ fn decrypt(encrypted_data: &str, static_secret: StaticSecret, _static_public: Pu
     String::from_utf8(buffer).expect("Invalid UTF-8")
 }
 
-fn main(){
+fn main() {
     let static_secret = StaticSecret::random_from_rng(OsRng);
     let static_public:PublicKey=PublicKey::from(&static_secret);
 
     let encrypted_message = encrypt(static_public, b"Hii! bytedream :3");
     println!("{}", encrypted_message);
 
-    let decrypted = decrypt(&encrypted_message, static_secret, static_public);
+    let decrypted = decrypt(&encrypted_message, static_secret);
     println!("Decrypted: {}", decrypted);
 }
