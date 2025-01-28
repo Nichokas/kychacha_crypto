@@ -1,4 +1,4 @@
-name: main
+name: CI
 
 on:
   push:
@@ -9,28 +9,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    name: Run Tests
+  cargo-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-      - name: Setup Rust
-        uses: hecrj/setup-rust-action@v1
+      - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
-      - name: Run tests
-        run: cargo test --all-features
+      - run: cargo test --all-features
 
-  clippy:
-    name: Clippy Checks  # Nombre amigable
+  clippy-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-      - name: Setup Rust
-        uses: hecrj/setup-rust-action@v1
+      - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
-      - name: Run Clippy
-        run: cargo clippy --all --all-features --tests -- -D warnings
+      - run: cargo clippy --all --all-features --tests -- -D warnings
