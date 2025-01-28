@@ -1,5 +1,6 @@
 mod key_exchange;
 mod encryption;
+mod tests;
 
 pub use key_exchange::*;
 pub use encryption::*;
