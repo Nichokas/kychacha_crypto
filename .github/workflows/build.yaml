@@ -2,28 +2,35 @@ name: main
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_and_test:
-    name: Rust project
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - uses: Swatinem/rust-cache@v2
-
-      - name: setup toolchain
+      - name: Setup Rust
         uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
-
-      - name: cargo test
+      - name: Run tests
         run: cargo test --all-features
 
-      - name: clippy
+  clippy:
+    name: Clippy Checks  # Nombre amigable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
+      - name: Setup Rust
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+      - name: Run Clippy
         run: cargo clippy --all --all-features --tests -- -D warnings
