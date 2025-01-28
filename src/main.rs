@@ -7,7 +7,10 @@ use chacha20poly1305::aead::Nonce;
 use hkdf::Hkdf;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
-use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret};
+use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret, StaticSecret};
+use anyhow::{bail, Context, Result};
+use thiserror::Error;
+
 
 #[derive(Serialize, Deserialize)]
 struct EncryptedData {
@@ -19,22 +22,22 @@ struct EncryptedData {
 fn derive_chacha_key(shared_secret:SharedSecret, salt:Option<&[u8]>) -> [u8; 32] {
     let hk = Hkdf::<Sha256>::new(salt, shared_secret.as_bytes());
     let mut okm = [0u8; 32];
-    hk.expand("&chacha-encryption".as_ref(), &mut okm)
+    hk.expand(b"chacha-encryption-v1", &mut okm)
         .expect("sos");
     okm
 }
 
-fn encrypt(static_public: PublicKey, message: &[u8]) -> String {
+fn encrypt(static_public: PublicKey, message: &[u8]) -> Result<String> {
     let ephemeral_secret = EphemeralSecret::random();
     let ephemeral_public = PublicKey::from(&ephemeral_secret);
     let shared_secret = ephemeral_secret.diffie_hellman(&static_public);
     let okm = derive_chacha_key(shared_secret, None);
 
     let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
-    let mut cipher = ChaCha20Poly1305::new_from_slice(&okm).expect("Invalid key length");
+    let mut cipher = ChaCha20Poly1305::new_from_slice(&okm).context("Failed to create cipher instance")?;
 
     let mut buffer = message.to_vec();
-    cipher.encrypt_in_place(&nonce, b"", &mut buffer).expect("Encryption failed");
+    cipher.encrypt_in_place(&nonce, b"", &mut buffer).map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;;
 
     let encrypted_data = EncryptedData {
         ephemeral_public: general_purpose::STANDARD.encode(ephemeral_public.as_bytes()),
@@ -42,11 +45,11 @@ fn encrypt(static_public: PublicKey, message: &[u8]) -> String {
         ciphertext: general_purpose::STANDARD.encode(buffer),
     };
 
-    serde_json::to_string(&encrypted_data).unwrap()
+    Ok(serde_json::to_string(&encrypted_data).context("Failed to serialize encrypted data"))
 }
 
 
-fn decrypt(encrypted_data: &str, static_secret: EphemeralSecret, _static_public: PublicKey) -> String {
+fn decrypt(encrypted_data: &str, static_secret: StaticSecret) -> String {
     let data: EncryptedData = serde_json::from_str(encrypted_data).expect("Invalid JSON");
 
     let ephemeral_public = general_purpose::STANDARD.decode(&data.ephemeral_public).expect("Invalid base64");
@@ -66,13 +69,15 @@ fn decrypt(encrypted_data: &str, static_secret: EphemeralSecret, _static_public:
     String::from_utf8(buffer).expect("Invalid UTF-8")
 }
 
-fn main() {
-    let static_secret:EphemeralSecret=EphemeralSecret::random();
+fn main() -> Result<()> {
+    let static_secret = StaticSecret::random_from_rng(OsRng);
     let static_public:PublicKey=PublicKey::from(&static_secret);
 
     let encrypted_message = encrypt(static_public, b"Hii! bytedream :3");
     println!("{}", encrypted_message);
 
-    let decrypted = decrypt(&encrypted_message, static_secret, static_public);
+    let decrypted = decrypt(&encrypted_message, static_secret);
     println!("Decrypted: {}", decrypted);
+
+    Ok(())
 }
