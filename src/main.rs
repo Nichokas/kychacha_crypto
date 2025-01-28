@@ -7,7 +7,8 @@ use chacha20poly1305::aead::Nonce;
 use hkdf::Hkdf;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
-use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret};
+use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret, StaticSecret};
+
 
 #[derive(Serialize, Deserialize)]
 struct EncryptedData {
@@ -46,7 +47,7 @@ fn encrypt(static_public: PublicKey, message: &[u8]) -> String {
 }
 
 
-fn decrypt(encrypted_data: &str, static_secret: EphemeralSecret, _static_public: PublicKey) -> String {
+fn decrypt(encrypted_data: &str, static_secret: StaticSecret, _static_public: PublicKey) -> String {
     let data: EncryptedData = serde_json::from_str(encrypted_data).expect("Invalid JSON");
 
     let ephemeral_public = general_purpose::STANDARD.decode(&data.ephemeral_public).expect("Invalid base64");
@@ -67,7 +68,7 @@ fn decrypt(encrypted_data: &str, static_secret: EphemeralSecret, _static_public:
 }
 
 fn main() {
-    let static_secret:EphemeralSecret=EphemeralSecret::random();
+    let static_secret = StaticSecret::new(OsRng);
     let static_public:PublicKey=PublicKey::from(&static_secret);
 
     let encrypted_message = encrypt(static_public, b"Hii! bytedream :3");

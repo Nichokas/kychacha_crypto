@@ -7,7 +7,8 @@ edition = "2021"
 chacha20poly1305 = "0.10.1"
 hkdf = "0.12.4"
 sha2 = "0.10.8"
-x25519-dalek = { version = "2.0.1", features = ["getrandom", "serde"] }
+x25519-dalek = { version = "2.0.1", features = ["getrandom", "serde", "static_secrets"] }
 base64 = "0.22.1"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.137"
+anyhow = "1.0.95"
