@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret, StaticSecret};
 
-
 #[derive(Serialize, Deserialize)]
 struct EncryptedData {
     ephemeral_public: String,
@@ -67,8 +66,8 @@ fn decrypt(encrypted_data: &str, static_secret: StaticSecret, _static_public: Pu
     String::from_utf8(buffer).expect("Invalid UTF-8")
 }
 
-fn main() {
-    let static_secret = StaticSecret::new(OsRng);
+fn main(){
+    let static_secret = StaticSecret::random_from_rng(OsRng);
     let static_public:PublicKey=PublicKey::from(&static_secret);
 
     let encrypted_message = encrypt(static_public, b"Hii! bytedream :3");
