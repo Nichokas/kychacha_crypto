@@ -1,11 +1,14 @@
-use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret};
 use hkdf::Hkdf;
 use sha2::Sha256;
+use anyhow::{Context, Result};
+use kyberlib::{keypair, keypairfrom, KyberLibError};
 
-pub fn generate_ephemeral_keypair() -> (EphemeralSecret, PublicKey) {
-    let secret = EphemeralSecret::random();
-    let public = PublicKey::from(&secret);
-    (secret, public)
+pub fn generate_ephemeral_keypair() -> Result<(kyberlib::kex::SecretKey, kyberlib::kex::PublicKey)> {
+    let mut rng = rand::thread_rng();
+    let keys = keypair(&mut rng).map_err(|e| anyhow::anyhow!("Keypair generation failed: {}", e))?;;
+    let mut public = keys.public;
+    let mut secret = keys.secret;
+    Ok((secret, public))
 }
 
 pub fn derive_shared_secret(
