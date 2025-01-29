@@ -1,27 +1,72 @@
+use anyhow::{anyhow, Result};
 use hkdf::Hkdf;
+use kyberlib::{keypair, Uake, Keypair, PublicKey, SecretKey, SharedSecret, UakeSendInit, UakeSendResponse};
+use rand::thread_rng;
 use sha2::Sha256;
-use anyhow::{Context, Result};
-use kyberlib::{keypair, keypairfrom, KyberLibError};
+use zerocopy::AsBytes;
 
-pub fn generate_ephemeral_keypair() -> Result<(kyberlib::kex::SecretKey, kyberlib::kex::PublicKey)> {
-    let mut rng = rand::thread_rng();
-    let keys = keypair(&mut rng).map_err(|e| anyhow::anyhow!("Keypair generation failed: {}", e))?;;
-    let mut public = keys.public;
-    let mut secret = keys.secret;
-    Ok((secret, public))
+// Tamaños para Kyber1024
+pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
+pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
+pub const KYBER_CIPHERTEXT_BYTES: usize = 1568;
+
+#[derive(Clone)]
+pub struct ClientHandshake {
+    pub(crate) instance: Uake,
+    pub send_init: UakeSendInit,
 }
 
-pub fn derive_shared_secret(
-    ephemeral_secret: EphemeralSecret,
-    static_public: &PublicKey
-) -> SharedSecret {
-    ephemeral_secret.diffie_hellman(static_public)
+pub struct ServerHandshake {
+    instance: Uake,
+    pub send_response: UakeSendResponse,
 }
 
-pub fn derive_chacha_key(shared_secret: SharedSecret, salt: Option<&[u8]>) -> [u8; 32] {
-    let hk = Hkdf::<Sha256>::new(salt, shared_secret.as_bytes());
+impl ClientHandshake {
+    pub fn new(server_pubkey: &PublicKey) -> Result<Self> {
+        let mut rng = thread_rng();
+        let mut instance = Uake::new();
+
+        let send_init = instance.client_init(server_pubkey, &mut rng)
+            .map_err(|e| anyhow!("Client init failed: {}", e))?;
+
+        Ok(Self { instance, send_init })
+    }
+
+    pub fn finalize(mut self, server_response: UakeSendResponse) -> Result<SharedSecret> {
+        self.instance.client_confirm(server_response)
+            .map_err(|e| anyhow!("Client confirm failed: {}", e))?;
+        Ok(self.instance.shared_secret)
+    }
+}
+
+impl ServerHandshake {
+    pub fn new(client_init: UakeSendInit, server_secret: &SecretKey) -> Result<Self> {
+        let mut rng = thread_rng();
+        let mut instance = Uake::new();
+
+        let send_response = instance.server_receive(client_init, server_secret, &mut rng)
+            .map_err(|e| anyhow!("Server receive failed: {}", e))?;
+
+        Ok(Self { instance, send_response })
+    }
+
+    pub fn get_secret(&self) -> SharedSecret {
+        self.instance.shared_secret.clone()
+    }
+    pub fn get_shared_secret(&self) -> SharedSecret {
+        self.instance.shared_secret.clone()
+    }
+}
+
+pub fn derive_chacha_key(shared_secret: &SharedSecret) -> [u8; 32] {
+    let hk = Hkdf::<Sha256>::new(None, shared_secret.as_bytes());
     let mut okm = [0u8; 32];
     hk.expand(b"chacha-encryption-v1", &mut okm)
-        .expect("HKDF expansion failed");
+        .expect("HKDF falló");
     okm
+}
+
+pub fn generate_keypair() -> Result<Keypair> {
+    let mut rng = thread_rng();
+    keypair(&mut rng).map_err(|e| anyhow!("Key generation failed: {}", e))
 }

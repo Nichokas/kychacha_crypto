@@ -1,11 +1,11 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use curve_msg::{derive_chacha_key, derive_shared_secret, generate_ephemeral_keypair};
+use curve_msg::{derive_chacha_key, derive_shared_secret, generate_keypair};
 use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 
 pub fn generate_ephemeral_keypair_bench(c: &mut Criterion) {
     c.bench_function("generate_ephemeral_keypair", |b| {
         b.iter(|| {
-            black_box(generate_ephemeral_keypair());
+            black_box(generate_keypair());
         })
     });
 }
