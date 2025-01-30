@@ -1,8 +1,7 @@
 // tests/test.rs
 use crate::TestData;
-use crate::{bytes_to_public_key, bytes_to_secret_key, decrypt, encrypt, generate_keypair, EncryptedData};
+use crate::{bytes_to_public_key, bytes_to_secret_key, decrypt, encrypt, generate_keypair, EncryptedData, Keypair};
 use anyhow::{Context, Result};
-use kyberlib::Keypair;
 
 #[test]
 fn test_round_trip() -> Result<()> {

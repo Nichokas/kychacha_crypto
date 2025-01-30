@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Error, Result};
 use hkdf::Hkdf;
-use kyberlib::{keypair, Uake, PublicKey, SecretKey, SharedSecret, UakeSendInit, UakeSendResponse};
+use kyberlib::{Uake, PublicKey, SecretKey, SharedSecret, UakeSendInit, UakeSendResponse, keypair};
 use rand::thread_rng;
 use sha2::Sha256;
 use zerocopy::AsBytes;
@@ -8,12 +8,6 @@ use zerocopy::AsBytes;
 // Sizes for Kyber1024
 pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
 pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
-
-#[derive(Clone, Debug)]
-pub struct Keypair {
-    pub public: PublicKey,
-    pub secret: SecretKey,
-}
 
 #[derive(Clone)]
 pub struct ClientHandshake {
