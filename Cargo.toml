@@ -1,7 +1,11 @@
 [package]
 name = "kychacha_crypto"
+description = "A Post-Quantum Secure Encryption Protocol using chacha20poly1305 and CRYSTALS-kyber"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/Nichokas/kychacha_crypto"
+readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.95"
