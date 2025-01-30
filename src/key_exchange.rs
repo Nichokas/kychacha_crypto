@@ -8,7 +8,6 @@ use zerocopy::AsBytes;
 // Tamaños para Kyber1024
 pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
 pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
-pub const KYBER_CIPHERTEXT_BYTES: usize = 1568;
 
 #[derive(Clone)]
 pub struct ClientHandshake {
@@ -51,10 +50,10 @@ impl ServerHandshake {
     }
 
     pub fn get_secret(&self) -> SharedSecret {
-        self.instance.shared_secret.clone()
+        self.instance.shared_secret
     }
     pub fn get_shared_secret(&self) -> SharedSecret {
-        self.instance.shared_secret.clone()
+        self.instance.shared_secret
     }
 }
 
