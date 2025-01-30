@@ -1,4 +1,4 @@
-use curve_msg::{encrypt, generate_keypair};
+use kychacha_crypto::{encrypt, generate_keypair};
 use base64::{engine::general_purpose, Engine as _};
 use anyhow::Result;
 use zerocopy::AsBytes;
@@ -27,7 +27,7 @@ fn main() -> Result<()> {
     println!("static ENCRYPTED_JSON: &str = r#\"{}\"#;", encrypted);
 
     // Verificación adicional
-    let decrypted = curve_msg::decrypt(&encrypted, &server_kp)?;
+    let decrypted = kychacha_crypto::decrypt(&encrypted, &server_kp)?;
     assert_eq!(decrypted, message);
 
     println!("\n=== VERIFICACIÓN EXITOSA ===");
