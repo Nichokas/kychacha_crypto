@@ -22,6 +22,13 @@ pub struct EncryptedData {
     pub encrypted_msg: Vec<u8>, // Encrypted message
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct TestData {
+    pub secret_key: Vec<u8>,
+    pub public_key: Vec<u8>,
+    pub encrypted_data: Vec<u8>,
+}
+
 pub fn secret_key_to_bytes(sk: &SecretKey) -> Vec<u8> {
     sk.as_bytes().to_vec()
 }
