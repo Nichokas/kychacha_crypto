@@ -1,6 +1,6 @@
 // benches/kyber_bench.rs
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-use curve_msg::{decrypt, encrypt, generate_keypair};
+use kychacha_crypto::{decrypt, encrypt, generate_keypair};
 
 fn keygen_benchmark(c: &mut Criterion) {
     c.bench_function("kyber_keypair_generation", |b| {
