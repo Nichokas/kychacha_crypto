@@ -5,7 +5,7 @@ use rand::thread_rng;
 use sha2::Sha256;
 use zerocopy::AsBytes;
 
-// Tamaños para Kyber1024
+// Sizes for Kyber1024
 pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
 pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
 
@@ -61,7 +61,7 @@ pub fn derive_chacha_key(shared_secret: &SharedSecret) -> [u8; 32] {
     let hk = Hkdf::<Sha256>::new(None, shared_secret.as_bytes());
     let mut okm = [0u8; 32];
     hk.expand(b"chacha-encryption-v1", &mut okm)
-        .expect("HKDF falló");
+        .expect("HKDF failed");
     okm
 }
 

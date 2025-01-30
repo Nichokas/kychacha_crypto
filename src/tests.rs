@@ -6,7 +6,7 @@ use kyberlib::{Keypair, PublicKey, SecretKey};
 #[test]
 fn test_round_trip() -> Result<()> {
     let server_kp = generate_keypair()?;
-    let msg = "Mensaje de prueba segura 98765!";
+    let msg = "Message for testing!!!";
 
     let encrypted = encrypt(&server_kp.public, msg.as_bytes())?;
     let decrypted = decrypt(&encrypted, &server_kp)?;
@@ -21,7 +21,7 @@ fn test_tampered_ciphertext() {
     let encrypted = encrypt(&server_kp.public, "test".as_bytes()).unwrap();
     let mut data: EncryptedData = serde_json::from_str(&encrypted).unwrap();
 
-    // Alterar ciphertext de Kyber
+    // Corrupt ciphertext of Kyber
     let mut ciphertext = general_purpose::STANDARD.decode(&data.ciphertext).unwrap();
     ciphertext[0] ^= 0x01;
     data.ciphertext = general_purpose::STANDARD.encode(ciphertext);
@@ -36,7 +36,7 @@ fn test_tampered_nonce() {
     let encrypted = encrypt(&server_kp.public, "test".as_bytes()).unwrap();
     let mut data: EncryptedData = serde_json::from_str(&encrypted).unwrap();
 
-    // Alterar nonce de ChaCha
+    // Corrupt nonce of ChaCha
     let mut nonce = general_purpose::STANDARD.decode(&data.nonce).unwrap();
     nonce[0] ^= 0x01;
     data.nonce = general_purpose::STANDARD.encode(nonce);
@@ -60,7 +60,7 @@ fn test_empty_message() -> Result<()> {
 #[test]
 fn test_large_message() -> Result<()> {
     let server_kp = generate_keypair()?;
-    let msg = "A".repeat(10_000); // Mensaje de 10KB
+    let msg = "A".repeat(10_000); // Message of 10KB
 
     let encrypted = encrypt(&server_kp.public, msg.as_bytes())?;
     let decrypted = decrypt(&encrypted, &server_kp)?;
@@ -73,7 +73,7 @@ fn test_large_message() -> Result<()> {
 fn test_wrong_key_decryption() {
     let sender_kp = generate_keypair().unwrap();
     let attacker_kp = generate_keypair().unwrap();
-    let msg = "Mensaje confidencial";
+    let msg = "Confidential message.";
 
     let encrypted = encrypt(&sender_kp.public, msg.as_bytes()).unwrap();
     let result = decrypt(&encrypted, &attacker_kp);
