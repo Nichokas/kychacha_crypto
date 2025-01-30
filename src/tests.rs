@@ -1,7 +1,7 @@
 // tests/test.rs
 use crate::{bytes_to_public_key, bytes_to_secret_key, decrypt, encrypt, generate_keypair, EncryptedData};
 use anyhow::Result;
-use kyberlib::{Keypair, PublicKey, SecretKey};
+use kyberlib::Keypair;
 
 #[test]
 fn test_round_trip() -> Result<()> {
