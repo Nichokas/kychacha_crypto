@@ -2,13 +2,13 @@ mod key_exchange;
 mod encryption;
 mod tests;
 
-pub use key_exchange::*;
 pub use encryption::*;
+pub use key_exchange::*;
 
 use anyhow::{anyhow, Context, Error, Result};
-use base64::{engine::general_purpose, Engine as _};
+use base64::Engine as _;
 use bincode::serialize;
-use kyberlib::{Keypair, PublicKey, encapsulate, decapsulate, KYBER_CIPHERTEXT_BYTES};
+use kyberlib::{decapsulate, encapsulate, Keypair, PublicKey, KYBER_CIPHERTEXT_BYTES};
 use serde::{Deserialize, Serialize};
 use zerocopy::AsBytes;
 
