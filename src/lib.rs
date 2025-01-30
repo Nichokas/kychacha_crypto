@@ -5,20 +5,24 @@ mod tests;
 pub use key_exchange::*;
 pub use encryption::*;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use base64::{engine::general_purpose, Engine as _};
+use bincode::serialize;
 use kyberlib::{Keypair, PublicKey, encapsulate, decapsulate, KYBER_CIPHERTEXT_BYTES};
 use serde::{Deserialize, Serialize};
 use zerocopy::AsBytes;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EncryptedData {
-    pub ciphertext: String,    // Ciphertext of Kyber (encapsulation)
-    pub nonce: String,         // Nonce for ChaCha20Poly1305
-    pub encrypted_msg: String, // Encrypted message
+    #[serde(with = "serde_bytes")]
+    pub ciphertext: Vec<u8>,    // Kyber ciphertext
+    #[serde(with = "serde_bytes")]
+    pub nonce: Vec<u8>,         // ChaCha20 nonce
+    #[serde(with = "serde_bytes")]
+    pub encrypted_msg: Vec<u8>, // Encrypted message
 }
 
-pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> Result<String> {
+pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result<Vec<u8>, Error> {
     // 1. Client encapsulate a shared secret
     let (kyber_ciphertext, shared_secret) = encapsulate(server_pubkey, &mut rand::thread_rng())
         .map_err(|e| anyhow!("Encapsulation failed: {}", e))?;
@@ -33,33 +37,25 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> Result<String> {
 
     // 4. Serialize data
     let data = EncryptedData {
-        ciphertext: general_purpose::STANDARD.encode(kyber_ciphertext.as_bytes()),
-        nonce: general_purpose::STANDARD.encode(nonce),
-        encrypted_msg: general_purpose::STANDARD.encode(ciphertext),
+        ciphertext: kyber_ciphertext.as_bytes().to_vec(),
+        nonce: nonce.to_vec(),
+        encrypted_msg: ciphertext,
     };
 
-    serde_json::to_string(&data).context("Error while serializing data")
+    serialize(&data).context("Serialization error")
 }
 
-pub fn decrypt(encrypted_data: &str, server_kp: &Keypair) -> Result<String> {
-    let data: EncryptedData = serde_json::from_str(encrypted_data)?;
+pub fn decrypt_binary(encrypted_data: &[u8], server_kp: &Keypair) -> Result<String> {
+    let data: EncryptedData = bincode::deserialize(encrypted_data)?;
 
-    // Decode components
-    let kyber_ciphertext = general_purpose::STANDARD.decode(&data.ciphertext)?;
-    let nonce = general_purpose::STANDARD.decode(&data.nonce)?;
-    let encrypted_msg = general_purpose::STANDARD.decode(&data.encrypted_msg)?;
-
-    let kyber_ciphertext_array: [u8; KYBER_CIPHERTEXT_BYTES] = kyber_ciphertext
+    let kyber_ciphertext_array: [u8; KYBER_CIPHERTEXT_BYTES] = data.ciphertext
         .try_into()
-        .map_err(|_| anyhow!("Invalid size of ciphertext"))?;
-    
-    // Uncapsulate shared secret
+        .map_err(|_| anyhow!("Tamaño de ciphertext inválido"))?;
+
     let shared_secret = decapsulate(&kyber_ciphertext_array, &server_kp.secret)
-        .map_err(|e| anyhow!("Uncapsulation failed: {}", e))?;
-
-    // Derivate key and decode
+        .map_err(|e| anyhow!("Encapsulation failed: {}", e))?;
     let chacha_key = derive_chacha_key(&shared_secret);
-    let plaintext = decrypt_with_key(&chacha_key, &nonce, &encrypted_msg)?;
 
-    String::from_utf8(plaintext).context("Invalid UTF-8")
+    let plaintext = decrypt_with_key(&chacha_key, &data.nonce, &data.encrypted_msg)?;
+    String::from_utf8(plaintext).context("UTF-8 inválido")
 }
