@@ -51,10 +51,10 @@ impl ServerHandshake {
     }
 
     pub fn get_secret(&self) -> SharedSecret {
-        self.instance.shared_secret.clone()
+        self.instance.shared_secret
     }
     pub fn get_shared_secret(&self) -> SharedSecret {
-        self.instance.shared_secret.clone()
+        self.instance.shared_secret
     }
 }
 

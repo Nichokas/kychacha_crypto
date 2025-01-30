@@ -1,7 +1,7 @@
-use crate::{decrypt, encrypt, EncryptedData, generate_keypair};
+use crate::{decrypt, encrypt, generate_keypair, EncryptedData};
+use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
-use anyhow::{Result, anyhow, Context};
-use kyberlib::{Keypair, SecretKey, PublicKey};
+use kyberlib::{Keypair, PublicKey, SecretKey};
 
 #[test]
 fn test_round_trip() -> Result<()> {

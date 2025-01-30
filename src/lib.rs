@@ -7,7 +7,7 @@ pub use encryption::*;
 
 use anyhow::{anyhow, Context, Result};
 use base64::{engine::general_purpose, Engine as _};
-use kyberlib::{Keypair, PublicKey, SecretKey, SharedSecret, encapsulate, decapsulate, KYBER_CIPHERTEXT_BYTES};
+use kyberlib::{Keypair, PublicKey, encapsulate, decapsulate, KYBER_CIPHERTEXT_BYTES};
 use serde::{Deserialize, Serialize};
 use zerocopy::AsBytes;
 
@@ -26,10 +26,10 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> Result<String> {
     debug_assert_eq!(kyber_ciphertext.as_bytes().len(), KYBER_CIPHERTEXT_BYTES);
 
     // 2. Derivar clave para ChaCha20Poly1305
-    let chacha_key = key_exchange::derive_chacha_key(&shared_secret);
+    let chacha_key = derive_chacha_key(&shared_secret);
 
     // 3. Cifrar el mensaje
-    let (nonce, ciphertext) = encryption::encrypt_with_key(&chacha_key, message)?;
+    let (nonce, ciphertext) = encrypt_with_key(&chacha_key, message)?;
 
     // 4. Serializar datos
     let data = EncryptedData {
@@ -58,8 +58,8 @@ pub fn decrypt(encrypted_data: &str, server_kp: &Keypair) -> Result<String> {
         .map_err(|e| anyhow!("Desencapsulación fallida: {}", e))?;
 
     // Derivar clave y descifrar
-    let chacha_key = key_exchange::derive_chacha_key(&shared_secret);
-    let plaintext = encryption::decrypt_with_key(&chacha_key, &nonce, &encrypted_msg)?;
+    let chacha_key = derive_chacha_key(&shared_secret);
+    let plaintext = decrypt_with_key(&chacha_key, &nonce, &encrypted_msg)?;
 
     String::from_utf8(plaintext).context("UTF-8 inválido")
 }
