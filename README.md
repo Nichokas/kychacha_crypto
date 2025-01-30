@@ -2,7 +2,7 @@
 [![CI](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml/badge.svg?branch=master)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml)
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
 
-Implementación criptográfica hibrida usando:
+Hybrid cryptographic implementation using:
 - **Kyber** (Post-Quantum KEM) for key exchange.
 - **ChaCha20-Poly1305** for symetric cypher.
 
