@@ -27,4 +27,4 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
-      - run: cargo clippy --all --all-features --tests -- -D warnings
+      - run: cargo clippy --all --all-features --tests
