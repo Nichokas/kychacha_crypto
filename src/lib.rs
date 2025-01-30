@@ -8,7 +8,7 @@ pub use key_exchange::*;
 use anyhow::{anyhow, Context, Error, Result};
 use base64::Engine as _;
 use bincode::serialize;
-use kyberlib::{decapsulate, encapsulate, Keypair, PublicKey, KYBER_CIPHERTEXT_BYTES};
+use kyberlib::{decapsulate, encapsulate, Keypair, PublicKey, SecretKey, KYBER_CIPHERTEXT_BYTES};
 use serde::{Deserialize, Serialize};
 use zerocopy::AsBytes;
 
@@ -20,6 +20,28 @@ pub struct EncryptedData {
     pub nonce: Vec<u8>,         // ChaCha20 nonce
     #[serde(with = "serde_bytes")]
     pub encrypted_msg: Vec<u8>, // Encrypted message
+}
+
+pub fn secret_key_to_bytes(sk: &SecretKey) -> Vec<u8> {
+    sk.as_bytes().to_vec()
+}
+
+pub fn public_key_to_bytes(pk: &PublicKey) -> Vec<u8> {
+    pk.as_bytes().to_vec()
+}
+
+pub fn bytes_to_secret_key(bytes: &[u8]) -> Result<SecretKey> {
+    let array: [u8; KYBER_SECRET_KEY_BYTES] = bytes
+        .try_into()
+        .map_err(|_| anyhow!("Invalid secret key length"))?;
+    Ok(SecretKey::from(array))
+}
+
+pub fn bytes_to_public_key(bytes: &[u8]) -> Result<PublicKey> {
+    let array: [u8; KYBER_PUBLIC_KEY_BYTES] = bytes
+        .try_into()
+        .map_err(|_| anyhow!("Invalid public key length"))?;
+    Ok(PublicKey::from(array))
 }
 
 pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result<Vec<u8>, Error> {
