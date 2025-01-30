@@ -5,7 +5,7 @@ mod tests;
 pub use encryption::*;
 pub use key_exchange::*;
 
-pub use kyberlib::{PublicKey, SecretKey, Keypair};
+pub use kyberlib::{PublicKey, SecretKey};
 pub use key_exchange::Keypair;
 use anyhow::{anyhow, Context, Error, Result};
 use base64::Engine as _;

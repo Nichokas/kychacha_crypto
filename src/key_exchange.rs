@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use hkdf::Hkdf;
-use kyberlib::{keypair, Uake, Keypair, PublicKey, SecretKey, SharedSecret, UakeSendInit, UakeSendResponse};
+use kyberlib::{keypair, Uake, PublicKey, SecretKey, SharedSecret, UakeSendInit, UakeSendResponse};
 use rand::thread_rng;
 use sha2::Sha256;
 use zerocopy::AsBytes;
@@ -8,6 +8,12 @@ use zerocopy::AsBytes;
 // Sizes for Kyber1024
 pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
 pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
+
+#[derive(Clone, Debug)]
+pub struct Keypair {
+    pub public: PublicKey,
+    pub secret: SecretKey,
+}
 
 #[derive(Clone)]
 pub struct ClientHandshake {
@@ -65,7 +71,7 @@ pub fn derive_chacha_key(shared_secret: &SharedSecret) -> [u8; 32] {
     okm
 }
 
-pub fn generate_keypair() -> Result<Keypair> {
+pub fn generate_keypair() -> std::result::Result<kyberlib::Keypair, Error> {
     let mut rng = thread_rng();
     keypair(&mut rng).map_err(|e| anyhow!("Key generation failed: {}", e))
 }
