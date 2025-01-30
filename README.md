@@ -81,20 +81,6 @@ use kychacha_crypto::{decrypt, Keypair};
 let decrypted = decrypt(&encrypted_data_json, &server_kp)?;
 ```
 
-## Instalación
-
-```bash
-# Clonar repositorio
-git clone https://github.com/tuusuario/turepo.git
-cd turepo
-
-# Construir con optimizaciones
-cargo build --release
-
-# Ejecutar tests
-cargo test -- --test-threads=1
-```
-
 ## Safety Considerations
 
 2. **Randomness**: Depends on the secure generator of the system.
