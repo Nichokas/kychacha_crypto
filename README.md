@@ -1,6 +1,7 @@
 # Kychacha-crypto: Post-Quantum Secure Encryption Protocol
 [![CI](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml)
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
+[![CodSpeed Badge](https://img.shields.io/crates/v/ml-dsa?logo=rust)](https://crates.io/crates/kychacha_crypto)
 
 Hybrid cryptographic implementation using:
 - **Kyber** (Post-Quantum KEM) for key exchange.
