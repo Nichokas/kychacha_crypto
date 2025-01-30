@@ -61,24 +61,43 @@ pub struct EncryptedData {
 
 ### Key generation
 ```rust
-use kychacha_crypto::generate_keypair;
+use kychacha_crypto::{generate_keypair, Keypair};
 
-let server_kp = generate_keypair()?;
+// Generate Kyber1024 keypair
+let server_kp: Keypair = generate_keypair()?;
 ```
 
 ### Encrypt
 ```rust
-use kychacha_crypto::{encrypt, PublicKey};
+use kychacha_crypto::{encrypt_binary, PublicKey};
 
-let message = b"Mensaje secreto";
-let encrypted_data = encrypt(&server_pk, message)?;
+let message = b"Secret message";
+// Encrypt using server's public key
+let encrypted_data: Vec<u8> = encrypt_binary(&server_kp.public, message)?;
+
+// Send encrypted_data (binary blob) to server
 ```
 
 ### Decrypt
 ```rust
-use kychacha_crypto::{decrypt, Keypair};
+use kychacha_crypto::{decrypt_binary, Keypair};
 
-let decrypted = decrypt(&encrypted_data_json, &server_kp)?;
+// Receive encrypted_data as &[u8] from client
+let decrypted_message = decrypt_binary(&encrypted_data, &server_kp)?;
+assert_eq!(decrypted_message, "Secret message");
+```
+
+### Key Serialization (for storage/transmission)
+```rust
+use kychacha_crypto::{public_key_to_bytes, secret_key_to_bytes};
+
+// Convert keys to byte vectors
+let pk_bytes: Vec<u8> = public_key_to_bytes(&server_kp.public);
+let sk_bytes: Vec<u8> = secret_key_to_bytes(&server_kp.secret);
+
+// Reconstruct keys from bytes
+let public_key = PublicKey::from(pk_bytes.as_slice());
+let secret_key = SecretKey::from(sk_bytes.as_slice());
 ```
 
 ## Safety Considerations
