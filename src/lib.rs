@@ -45,7 +45,7 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result
     serialize(&data).context("Serialization error")
 }
 
-pub fn decrypt_binary(encrypted_data: &[u8], server_kp: &Keypair) -> Result<String> {
+pub fn decrypt(encrypted_data: &[u8], server_kp: &Keypair) -> Result<String> {
     let data: EncryptedData = bincode::deserialize(encrypted_data)?;
 
     let kyber_ciphertext_array: [u8; KYBER_CIPHERTEXT_BYTES] = data.ciphertext
