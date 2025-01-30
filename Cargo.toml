@@ -7,6 +7,15 @@ license = "MIT"
 repository = "https://github.com/Nichokas/kychacha_crypto"
 readme = "README.md"
 
+exclude = [
+    ".cargo_vcs_info.json",
+    ".github/dependabot.yml",
+    ".github/workflows/auto-merge.yaml",
+    ".github/workflows/codspeed.yaml",
+    ".github/workflows/rustsec.yaml",
+    ".idea/.gitignore",
+]
+
 [dependencies]
 anyhow = "1.0.95"
 base64 = "0.22.1"
