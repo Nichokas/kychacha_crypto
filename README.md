@@ -3,6 +3,8 @@
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
 [![CodSpeed Badge](https://img.shields.io/crates/v/ml-dsa?logo=rust)](https://crates.io/crates/kychacha_crypto)
 
+# THIS PROJECT IS UNDER ACTIVE DEVELOPMENT, IT MAY CONTAIN BREAKING CHANGES ON UPDATES.
+
 Hybrid cryptographic implementation using:
 - **Kyber** (Post-Quantum KEM) for key exchange.
 - **ChaCha20-Poly1305** for symetric cypher.
