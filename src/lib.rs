@@ -1,23 +1,4 @@
 // lib.rs
-//! Post-quantum hybrid encryption combining:
-//! - Kyber-1024 (CRYSTALS-Kyber NIST PQC Round 3)
-//! - ChaCha20-Poly1305 (IETF RFC 8439)
-//!
-//! ## Basic Usage
-//! ```
-//! use kychacha_crypto::{generate_keypair, encrypt, decrypt, public_key_to_bytes, secret_key_to_bytes};
-//!
-//! // Key management
-//! let keypair = generate_keypair()?;
-//! let pk_bytes = public_key_to_bytes(&keypair.public);
-//! let sk_bytes = secret_key_to_bytes(&keypair.secret);
-//!
-//! // Encryption
-//! let encrypted = encrypt(&keypair.public, b"Secret")?;
-//!
-//! // Decryption
-//! let decrypted = decrypt(&encrypted, &keypair)?;
-//! ```
 mod key_exchange;
 mod encryption;
 mod tests;
@@ -54,7 +35,16 @@ pub struct TestData {
     pub encrypted_data: Vec<u8>,
 }
 
-
+/// Converts secret key to byte vector
+/// # Example
+/// ```
+/// use kychacha_crypto::{secret_key_to_bytes, generate_keypair};
+///
+/// let keypair = generate_keypair()?;
+///
+/// let pk_bytes = secret_key_to_bytes(&keypair.secret);
+/// assert_eq!(pk_bytes.len(), 2400);
+/// ```
 pub fn secret_key_to_bytes(sk: &SecretKey) -> Vec<u8> {
     sk.as_bytes().to_vec()
 }
@@ -136,7 +126,7 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result
 /// use kychacha_crypto::{decrypt, encrypt, generate_keypair};
 /// 
 /// let keypair = generate_keypair()?;
-/// let data = encrypt(&keypair.public, b"the data").unwrap();
+/// let data = encrypt(&keypair.public, b"the data").unwrap(); //for generating data to decrypt
 ///
 /// let decrypted = decrypt(&data, &keypair)?;
 /// ```
