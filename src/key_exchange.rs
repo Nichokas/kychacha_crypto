@@ -92,9 +92,13 @@ pub fn derive_chacha_key(shared_secret: &SharedSecret) -> [u8; 32] {
 ///
 /// # Example
 /// ```
+/// # use std::error::Error;
+/// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::generate_keypair;
 ///
 /// let keypair = generate_keypair()?;
+/// Ok(())
+/// # }
 /// ```
 pub fn generate_keypair() -> std::result::Result<kyberlib::Keypair, Error> {
     let mut rng = thread_rng();

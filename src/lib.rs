@@ -40,12 +40,16 @@ pub struct TestData {
 /// Converts secret key to byte vector
 /// # Example
 /// ```
+/// # use std::error::Error;
+/// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::{secret_key_to_bytes, generate_keypair};
 ///
 /// let keypair = generate_keypair()?;
 ///
 /// let pk_bytes = secret_key_to_bytes(&keypair.secret);
 /// assert_eq!(pk_bytes.len(), 2400);
+/// Ok(())
+/// # }
 /// ```
 pub fn secret_key_to_bytes(sk: &SecretKey) -> Vec<u8> {
     sk.as_bytes().to_vec()
@@ -54,12 +58,16 @@ pub fn secret_key_to_bytes(sk: &SecretKey) -> Vec<u8> {
 /// Converts public key to byte vector
 /// # Example
 /// ```
+/// # use std::error::Error;
+/// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::{public_key_to_bytes, generate_keypair};
-/// 
+///
 /// let keypair = generate_keypair()?;
-/// 
+///
 /// let pk_bytes = public_key_to_bytes(&keypair.public);
 /// assert_eq!(pk_bytes.len(), 1184);
+/// Ok(())
+/// # }
 /// ```
 pub fn public_key_to_bytes(pk: &PublicKey) -> Vec<u8> {
     pk.as_bytes().to_vec()
@@ -89,11 +97,15 @@ pub fn bytes_to_public_key(bytes: &[u8]) -> Result<PublicKey> {
 /// Hybrid encryption with Kyber + ChaCha
 /// # Example
 /// ```
+/// # use std::error::Error;
+/// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::{encrypt, generate_keypair};
 ///
 /// let keypair = generate_keypair()?;
 ///
-/// let data = encrypt(&keypair.public, b"the data").unwrap();
+/// let data = encrypt(&keypair.public, b"the data")?;
+/// Ok(())
+/// # }
 /// ```
 pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result<Vec<u8>, Error> {
     // 1. Client encapsulate a shared secret
@@ -125,12 +137,16 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result
 ///
 /// # Example
 /// ```
+/// # use std::error::Error;
+/// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::{decrypt, encrypt, generate_keypair};
-/// 
+///
 /// let keypair = generate_keypair()?;
-/// let data = encrypt(&keypair.public, b"the data").unwrap(); //for generating data to decrypt
+/// let data = encrypt(&keypair.public, b"the data")?;
 ///
 /// let decrypted = decrypt(&data, &keypair)?;
+/// Ok(())
+/// # }
 /// ```
 pub fn decrypt(encrypted_data: &[u8], server_kp: &Keypair) -> Result<String> {
     let data: EncryptedData = bincode::deserialize(encrypted_data)?;
