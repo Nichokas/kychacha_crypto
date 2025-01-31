@@ -1,4 +1,4 @@
-//! Cifrado simétrico usando ChaCha20Poly1305 (AEAD).
+//! Symmetric cypher using ChaCha20Poly1305 (AEAD).
 
 use anyhow::{anyhow, Context, Result};
 use chacha20poly1305::{
@@ -12,7 +12,7 @@ use chacha20poly1305::{
 /// # Example
 /// ```
 /// use kychacha_crypto::encrypt_with_key;
-/// 
+///
 /// // do not use this on your code, instead use encrypt fn
 /// let key = [0u8; 32];
 /// let (nonce, cifrado) = encrypt_with_key(&key, b"mensaje").unwrap();
@@ -20,7 +20,7 @@ use chacha20poly1305::{
 ///
 /// # Errores
 /// - key ≠ 32 bytes
-/// - Error while encrypting 
+/// - Error while encrypting
 pub fn encrypt_with_key(
     key: &[u8; 32],
     plaintext: &[u8]
@@ -42,7 +42,7 @@ pub fn encrypt_with_key(
 /// # Example
 /// ```
 /// use kychacha_crypto::{decrypt_with_key, encrypt_with_key};
-/// 
+///
 /// let key = [0u8; 32];
 /// // do not use this on your code, instead use encrypt fn
 /// let (nonce, encrypted) = encrypt_with_key(&key, b"mensaje").unwrap();

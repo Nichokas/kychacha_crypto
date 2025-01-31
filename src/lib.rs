@@ -1,6 +1,8 @@
 // lib.rs
 mod key_exchange;
 mod encryption;
+
+#[cfg(test)]
 mod tests;
 
 pub use encryption::*;
