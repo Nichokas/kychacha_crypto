@@ -104,7 +104,7 @@ fn test_known_vector() -> Result<()> {
 
     // Leer y deserializar
     let bytes = std::fs::read(path)?;
-    bincode::deserialize(&bytes)?;
+    bincode::deserialize::<()>(&bytes)?;
     let test_data: TestData = bincode::deserialize(&bytes)?;
 
     let server_kp = Keypair {
