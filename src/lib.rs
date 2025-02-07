@@ -13,7 +13,7 @@ use anyhow::{anyhow, Context, Error, Result};
 use bincode::serialize;
 use kyberlib::{decapsulate, encapsulate, KYBER_CIPHERTEXT_BYTES};
 use serde::{Deserialize, Serialize};
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 /// Serialized encrypted data format
 #[derive(Serialize, Deserialize, Debug)]
