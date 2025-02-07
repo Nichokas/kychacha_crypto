@@ -2,7 +2,7 @@
 [![CI](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml)
 [![Security audit](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml)
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
-[![CodSpeed Badge](https://img.shields.io/crates/v/ml-dsa?logo=rust)](https://crates.io/crates/kychacha_crypto)
+![Crates.io Version](https://img.shields.io/crates/v/kychacha_crypto)
 
 # THIS PROJECT IS UNDER ACTIVE DEVELOPMENT, IT MAY CONTAIN BREAKING CHANGES ON UPDATES.
 
