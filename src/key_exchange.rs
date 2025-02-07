@@ -13,7 +13,7 @@ use hkdf::Hkdf;
 use kyberlib::{Uake, PublicKey, SecretKey, SharedSecret, UakeSendInit, UakeSendResponse, keypair};
 use rand::thread_rng;
 use sha2::Sha256;
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 /// Kyber-1024 key sizes
 pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
