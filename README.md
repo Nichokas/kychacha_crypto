@@ -58,9 +58,9 @@ sequenceDiagram
 ### 3. Encrypted Data Format
 The encrypted data is a serialized binary structure containing:
 
-- Ciphertext: Kyber ciphertext (1568 bytes).
-- Nonce: ChaCha20 nonce (12 bytes).
-- Encrypted Message: Encrypted message with authentication tag.
+- **Ciphertext**: Kyber ciphertext (1568 bytes).
+- **Nonce**: ChaCha20 nonce (12 bytes).
+- **Encrypted Message**: Encrypted message with authentication tag.
 ```rust
     #[derive(Serialize, Deserialize, Debug)]
     pub struct EncryptedData {
