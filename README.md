@@ -5,8 +5,6 @@
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
 ![Crates.io Version](https://img.shields.io/crates/v/kychacha_crypto)
 
-> **Note**: This project is under active development and may contain breaking changes in updates.
-
 Hybrid cryptographic implementation using:
 - **Kyber**: Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange.
 - **ChaCha20-Poly1305**: Authenticated symmetric encryption.
@@ -74,7 +72,7 @@ The encrypted data is a serialized binary structure containing:
 ```
 
 ## Basic Usage
-### Key Generation
+### Key Generation and encryption
 ```rust
 use kychacha_crypto::{generate_keypair, Keypair};
 
