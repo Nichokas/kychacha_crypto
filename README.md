@@ -1,12 +1,12 @@
 # Kychacha-crypto: Post-Quantum Secure Encryption Protocol
-
+## A post-quantum simple to use implementation for Kyber and ChaCha20
 [![CI](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml)
 [![Security audit](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml)
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
 ![Crates.io Version](https://img.shields.io/crates/v/kychacha_crypto)
 
 Hybrid cryptographic implementation using:
-- **Kyber**: Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange.
+- **Crystals-Kyber**: Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange.
 - **ChaCha20-Poly1305**: Authenticated symmetric encryption.
 
 ## Architecture
