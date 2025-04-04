@@ -74,22 +74,14 @@ The encrypted data is a serialized binary structure containing:
 ## Basic Usage
 ### Key Generation and encryption
 ```rust
-use kychacha_crypto::{generate_keypair, Keypair};
+use kychacha_crypto::{generate_keypair, Keypair, decrypt, encrypt, PublicKey};
 
 // Generate a Kyber-1024 keypair
 let server_kp: Keypair = generate_keypair()?;
-Encryption
-rust
-use kychacha_crypto::{encrypt, PublicKey};
 
 let message = b"Secret message";
 // Encrypt the message using the server's public key
 let encrypted_data: Vec<u8> = encrypt(&server_kp.public, message)?;
-
-// Send encrypted_data (binary blob) to the server
-Decryption
-rust
-use kychacha_crypto::{decrypt, Keypair};
 
 // Receive encrypted_data as &[u8] from the client
 let decrypted_message = decrypt(&encrypted_data, &server_kp)?;
