@@ -10,7 +10,7 @@
 
 use anyhow::{anyhow, Error, Result};
 use hkdf::Hkdf;
-use kyberlib::{Uake, PublicKey, SecretKey, SharedSecret, UakeSendInit, UakeSendResponse, keypair};
+use kyberlib::{keypair, PublicKey, SecretKey, SharedSecret, Uake, UakeSendInit, UakeSendResponse};
 use rand::thread_rng;
 use sha2::Sha256;
 use zerocopy::IntoBytes;
@@ -39,10 +39,14 @@ impl ClientHandshake {
         let mut rng = thread_rng();
         let mut instance = Uake::new();
 
-        let send_init = instance.client_init(server_pubkey, &mut rng)
+        let send_init = instance
+            .client_init(server_pubkey, &mut rng)
             .map_err(|e| anyhow!("Client init failed: {}", e))?;
 
-        Ok(Self { instance, send_init })
+        Ok(Self {
+            instance,
+            send_init,
+        })
     }
 
     /// Completes handshake with recipient response
@@ -50,7 +54,8 @@ impl ClientHandshake {
     /// # Returns
     /// Shared secret for key derivation
     pub fn finalize(mut self, server_response: UakeSendResponse) -> Result<SharedSecret> {
-        self.instance.client_confirm(server_response)
+        self.instance
+            .client_confirm(server_response)
             .map_err(|e| anyhow!("Client confirm failed: {}", e))?;
         Ok(self.instance.shared_secret)
     }
@@ -62,10 +67,14 @@ impl ServerHandshake {
         let mut rng = thread_rng();
         let mut instance = Uake::new();
 
-        let send_response = instance.server_receive(client_init, server_secret, &mut rng)
+        let send_response = instance
+            .server_receive(client_init, server_secret, &mut rng)
             .map_err(|e| anyhow!("Server receive failed: {}", e))?;
 
-        Ok(Self { instance, send_response })
+        Ok(Self {
+            instance,
+            send_response,
+        })
     }
 
     /// Retrieves established shared secret

@@ -15,7 +15,8 @@ fn encapsulation_benchmark(c: &mut Criterion) {
 
     c.bench_function("kyber_encapsulation", |b| {
         b.iter(|| {
-            let (ct, _ss) = kyberlib::encapsulate(&server_kp.public, &mut rand::thread_rng()).unwrap();
+            let (ct, _ss) =
+                kyberlib::encapsulate(&server_kp.public, &mut rand::thread_rng()).unwrap();
             black_box(ct);
         });
     });
@@ -38,18 +39,17 @@ fn full_encryption_benchmark(c: &mut Criterion) {
     let messages = vec![
         ("short", b"test".to_vec()),
         ("medium", vec![0u8; 1024]),
-        ("long", vec![0u8; 4096])
+        ("long", vec![0u8; 4096]),
     ];
 
     for (name, message) in messages {
-        c.bench_function(
-            &format!("full_encryption_{}", name),
-            |b| b.iter_batched(
+        c.bench_function(&format!("full_encryption_{}", name), |b| {
+            b.iter_batched(
                 || message.clone(),
                 |msg| black_box(encrypt(&server_kp.public, &msg).unwrap()),
-                BatchSize::SmallInput
+                BatchSize::SmallInput,
             )
-        );
+        });
     }
 }
 
@@ -57,24 +57,29 @@ fn full_decryption_benchmark(c: &mut Criterion) {
     let server_kp = generate_keypair().unwrap();
     let messages = vec![
         ("short", encrypt(&server_kp.public, b"test").unwrap()),
-        ("medium", encrypt(&server_kp.public, &vec![0u8; 1024]).unwrap()),
-        ("long", encrypt(&server_kp.public, &vec![0u8; 4096]).unwrap())
+        (
+            "medium",
+            encrypt(&server_kp.public, &vec![0u8; 1024]).unwrap(),
+        ),
+        (
+            "long",
+            encrypt(&server_kp.public, &vec![0u8; 4096]).unwrap(),
+        ),
     ];
 
     for (name, ciphertext) in messages {
-        c.bench_function(
-            &format!("full_decryption_{}", name),
-            |b| b.iter(|| {
+        c.bench_function(&format!("full_decryption_{}", name), |b| {
+            b.iter(|| {
                 black_box(decrypt(&ciphertext, &server_kp).unwrap());
             })
-        );
+        });
     }
 }
 
-criterion_group!{
+criterion_group! {
     name = benches;
     config = Criterion::default().sample_size(1000);
-    targets = 
+    targets =
         keygen_benchmark,
         encapsulation_benchmark,
         decapsulation_benchmark,
