@@ -1,7 +1,11 @@
 // tests/test.rs
 use crate::TestData;
-use crate::{bytes_to_public_key, bytes_to_secret_key, decrypt, encrypt, generate_keypair, EncryptedData, Keypair};
+use crate::{
+    bytes_to_public_key, bytes_to_secret_key, decrypt, encrypt, generate_keypair, EncryptedData,
+    Keypair,
+};
 use anyhow::{Context, Result};
+use bincode::serde::{decode_from_slice, encode_to_vec};
 
 #[test]
 fn test_round_trip() -> Result<()> {
@@ -19,12 +23,18 @@ fn test_round_trip() -> Result<()> {
 fn test_tampered_ciphertext() {
     let server_kp = generate_keypair().unwrap();
     let encrypted = encrypt(&server_kp.public, "test".as_bytes()).unwrap();
-    let mut data: EncryptedData = bincode::deserialize(&encrypted).unwrap();
+
+    // Configuración estándar para bincode
+    let config = bincode::config::standard()
+        .with_big_endian()
+        .with_variable_int_encoding();
+
+    let (mut data, _): (EncryptedData, usize) = decode_from_slice(&encrypted, config).unwrap();
 
     // Corrupt Kyber ciphertext
     data.ciphertext[0] ^= 0x01;
 
-    let tampered_data = bincode::serialize(&data).unwrap();
+    let tampered_data = encode_to_vec(&data, config).unwrap();
     let result = decrypt(&tampered_data, &server_kp);
     assert!(result.is_err());
 }
@@ -33,12 +43,18 @@ fn test_tampered_ciphertext() {
 fn test_tampered_nonce() {
     let server_kp = generate_keypair().unwrap();
     let encrypted = encrypt(&server_kp.public, "test".as_bytes()).unwrap();
-    let mut data: EncryptedData = bincode::deserialize(&encrypted).unwrap();
+
+    // Configuración estándar para bincode
+    let config = bincode::config::standard()
+        .with_big_endian()
+        .with_variable_int_encoding();
+
+    let (mut data, _): (EncryptedData, usize) = decode_from_slice(&encrypted, config).unwrap();
 
     // Corrupt nonce
     data.nonce[0] ^= 0x01;
 
-    let tampered_data = bincode::serialize(&data).unwrap();
+    let tampered_data = encode_to_vec(&data, config).unwrap();
     let result = decrypt(&tampered_data, &server_kp);
     assert!(result.is_err());
 }
@@ -83,16 +99,20 @@ fn test_wrong_key_decryption() {
 fn test_known_vector() -> Result<()> {
     let path = "tests.bin";
 
-    // Verificar existencia del archivo
-    let metadata = std::fs::metadata(path)
-        .context(format!("Archivo '{}' no encontrado. Ejecuta `cargo run --bin main` primero", path))?;
+    // Configuración estándar para bincode
+    let config = bincode::config::standard()
+        .with_big_endian()
+        .with_variable_int_encoding();
 
-    // Verificar tamaño mínimo
-    let min_size = bincode::serialized_size(&TestData {
-        secret_key: vec![],
-        public_key: vec![],
-        encrypted_data: vec![],
-    })?;
+    // Verificar existencia del archivo
+    let metadata = std::fs::metadata(path).context(format!(
+        "Archivo '{}' no encontrado. Ejecuta `cargo run --bin main` primero",
+        path
+    ))?;
+
+    // En bincode 2.0 no existe serialized_size de la misma forma
+    // Por lo que vamos a estimar un tamaño mínimo razonable
+    let min_size = 100; // Tamaño mínimo estimado
 
     if metadata.len() < min_size {
         anyhow::bail!(
@@ -104,8 +124,12 @@ fn test_known_vector() -> Result<()> {
 
     // Leer y deserializar
     let bytes = std::fs::read(path)?;
-    bincode::deserialize::<()>(&bytes)?;
-    let test_data: TestData = bincode::deserialize(&bytes)?;
+
+    // Verificar que se puede deserializar como vacío primero
+    let (_empty, _): ((), usize) = decode_from_slice(&bytes, config)?;
+
+    // Deserializar los datos de prueba
+    let (test_data, _): (TestData, usize) = decode_from_slice(&bytes, config)?;
 
     let server_kp = Keypair {
         secret: bytes_to_secret_key(&test_data.secret_key)?,
