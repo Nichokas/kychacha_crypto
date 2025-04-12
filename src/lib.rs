@@ -1,6 +1,6 @@
 // lib.rs
-mod key_exchange;
 mod encryption;
+mod key_exchange;
 
 #[cfg(test)]
 mod tests;
@@ -8,10 +8,10 @@ mod tests;
 pub use encryption::*;
 pub use key_exchange::*;
 
-pub use kyberlib::{PublicKey, SecretKey, Keypair};
 use anyhow::{anyhow, Context, Error, Result};
-use bincode::serialize;
+use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
 use kyberlib::{decapsulate, encapsulate, KYBER_CIPHERTEXT_BYTES};
+pub use kyberlib::{Keypair, PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
 use zerocopy::IntoBytes;
 
@@ -83,7 +83,6 @@ pub fn bytes_to_secret_key(bytes: &[u8]) -> Result<SecretKey> {
     Ok(SecretKey::from(array))
 }
 
-
 /// Reconstructs public key from bytes
 /// # Error
 /// Returns error if input ≠ 1184 bytes
@@ -127,7 +126,11 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result
         encrypted_msg: ciphertext,
     };
 
-    serialize(&data).context("Serialization error")
+    let config = bincode::config::standard()
+        .with_big_endian()
+        .with_variable_int_encoding();
+
+    encode_to_vec(&data, config).context("Serialization error")
 }
 
 /// Hybrid decryption workflow:
@@ -149,9 +152,14 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result
 /// # }
 /// ```
 pub fn decrypt(encrypted_data: &[u8], server_kp: &Keypair) -> Result<String> {
-    let data: EncryptedData = bincode::deserialize(encrypted_data)?;
+    let config = bincode::config::standard()
+        .with_big_endian()
+        .with_variable_int_encoding();
 
-    let kyber_ciphertext_array: [u8; KYBER_CIPHERTEXT_BYTES] = data.ciphertext
+    let (data, _size): (EncryptedData, usize) = borrow_decode_from_slice(encrypted_data, config)?;
+
+    let kyber_ciphertext_array: [u8; KYBER_CIPHERTEXT_BYTES] = data
+        .ciphertext
         .try_into()
         .map_err(|_| anyhow!("Tamaño de ciphertext inválido"))?;
 
