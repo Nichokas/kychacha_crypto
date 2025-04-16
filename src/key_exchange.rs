@@ -15,9 +15,9 @@ use rand::thread_rng;
 use sha2::Sha256;
 use zerocopy::IntoBytes;
 
-/// Kyber-1024 key sizes
+/// Kyber-768 key sizes
 pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
-/// Kyber-1024 key sizes
+/// Kyber-768 key sizes
 pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
 
 /// Client-side handshake state
