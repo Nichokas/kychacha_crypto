@@ -99,20 +99,16 @@ fn test_wrong_key_decryption() {
 fn test_known_vector() -> Result<()> {
     let path = "tests.bin";
 
-    // Configuración estándar para bincode
     let config = bincode::config::standard()
         .with_big_endian()
         .with_variable_int_encoding();
 
-    // Verificar existencia del archivo
     let metadata = std::fs::metadata(path).context(format!(
         "Archivo '{}' no encontrado. Ejecuta `cargo run --bin main` primero",
         path
     ))?;
 
-    // En bincode 2.0 no existe serialized_size de la misma forma
-    // Por lo que vamos a estimar un tamaño mínimo razonable
-    let min_size = 100; // Tamaño mínimo estimado
+    let min_size = 100;
 
     if metadata.len() < min_size {
         anyhow::bail!(
@@ -122,13 +118,10 @@ fn test_known_vector() -> Result<()> {
         );
     }
 
-    // Leer y deserializar
     let bytes = std::fs::read(path)?;
 
-    // Verificar que se puede deserializar como vacío primero
     let (_empty, _): ((), usize) = decode_from_slice(&bytes, config)?;
 
-    // Deserializar los datos de prueba
     let (test_data, _): (TestData, usize) = decode_from_slice(&bytes, config)?;
 
     let server_kp = Keypair {
