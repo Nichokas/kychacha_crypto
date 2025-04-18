@@ -21,7 +21,7 @@ use chacha20poly1305::{
 /// - key ≠ 32 bytes
 /// - Error while encrypting
 pub fn encrypt_with_key(key: &[u8; 32], plaintext: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
-    let mut cipher = ChaCha20Poly1305::new_from_slice(key) // Remover mut
+    let mut cipher = ChaCha20Poly1305::new_from_slice(key)
         .context("Invalid key length")?;
 
     let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
