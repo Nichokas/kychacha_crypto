@@ -107,19 +107,16 @@ pub fn bytes_to_public_key(bytes: &[u8]) -> Result<PublicKey> {
 /// # }
 /// ```
 pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result<Vec<u8>, Error> {
-    // 1. Client encapsulate a shared secret
     let (kyber_ciphertext, shared_secret) = encapsulate(server_pubkey, &mut rand::thread_rng())
         .map_err(|e| anyhow!("Encapsulation failed: {}", e))?;
 
     debug_assert_eq!(kyber_ciphertext.as_bytes().len(), KYBER_CIPHERTEXT_BYTES);
-
-    // 2. Derivate key for ChaCha20Poly1305
+    
     let chacha_key = derive_chacha_key(&shared_secret);
-
-    // 3. Encrypt the message
+    
     let (nonce, ciphertext) = encrypt_with_key(&chacha_key, message)?;
 
-    // 4. Serialize data
+    // Serialize data
     let data = EncryptedData {
         ciphertext: kyber_ciphertext.as_bytes().to_vec(),
         nonce: nonce.to_vec(),

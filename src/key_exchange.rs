@@ -1,16 +1,8 @@
 //! Kyber-1024 key exchange implementation (NIST PQC Round 3)
-//!
-//! Provides Unilateral Authentication Key Exchange (UAKE) protocol
-//!
-//! ## Basic Flow
-//! 1. Client: `ClientHandshake::new()` -> `send_init`
-//! 2. Server: `ServerHandshake::new()` -> `send_response`
-//! 3. Client: `finalize()` -> Shared secret
-//! 4. Derive keys: `derive_chacha_key()`
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Error};
 use hkdf::Hkdf;
-use kyberlib::{keypair, PublicKey, SecretKey, SharedSecret, Uake, UakeSendInit, UakeSendResponse};
+use kyberlib::{keypair, SharedSecret};
 use rand::thread_rng;
 use sha2::Sha256;
 use zerocopy::IntoBytes;
@@ -19,69 +11,6 @@ use zerocopy::IntoBytes;
 pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
 /// Kyber-768 key sizes
 pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
-
-/// Client-side handshake state
-#[derive(Clone)]
-pub struct ClientHandshake {
-    pub(crate) instance: Uake,
-    pub send_init: UakeSendInit,
-}
-
-/// Server-side handshake state
-pub struct ServerHandshake {
-    instance: Uake,
-    pub send_response: UakeSendResponse,
-}
-
-impl ClientHandshake {
-    /// Initiates key exchange with recipient public key
-    pub fn new(server_pubkey: &PublicKey) -> Result<Self> {
-        let mut rng = thread_rng();
-        let mut instance = Uake::new();
-
-        let send_init = instance
-            .client_init(server_pubkey, &mut rng)
-            .map_err(|e| anyhow!("Client init failed: {}", e))?;
-
-        Ok(Self {
-            instance,
-            send_init,
-        })
-    }
-
-    /// Completes handshake with recipient response
-    ///
-    /// # Returns
-    /// Shared secret for key derivation
-    pub fn finalize(mut self, server_response: UakeSendResponse) -> Result<SharedSecret> {
-        self.instance
-            .client_confirm(server_response)
-            .map_err(|e| anyhow!("Client confirm failed: {}", e))?;
-        Ok(self.instance.shared_secret)
-    }
-}
-
-impl ServerHandshake {
-    /// Processes sender initiation and generates response
-    pub fn new(client_init: UakeSendInit, server_secret: &SecretKey) -> Result<Self> {
-        let mut rng = thread_rng();
-        let mut instance = Uake::new();
-
-        let send_response = instance
-            .server_receive(client_init, server_secret, &mut rng)
-            .map_err(|e| anyhow!("Server receive failed: {}", e))?;
-
-        Ok(Self {
-            instance,
-            send_response,
-        })
-    }
-
-    /// Retrieves established shared secret
-    pub fn get_secret(&self) -> SharedSecret {
-        self.instance.shared_secret
-    }
-}
 
 /// Derives 256-bit ChaCha20 key from Kyber shared secret
 ///
