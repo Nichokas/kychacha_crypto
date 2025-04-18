@@ -35,7 +35,7 @@ sequenceDiagram
     Recipient->>Recipient: Decrypt message
 ```
 
-> *Note*: During the encapsulation process on the sender's side, an ephemeral keypair is generated as part of the Kyber mechanism.
+> *Note*: During the encapsulation process on the sender's side, an ephemeral keypair is generated.
 
 ## Technical Specifications
 
