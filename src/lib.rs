@@ -12,6 +12,8 @@ use anyhow::{anyhow, Context, Error, Result};
 use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
 use kyberlib::{decapsulate, encapsulate, KYBER_CIPHERTEXT_BYTES};
 pub use kyberlib::{Keypair, PublicKey, SecretKey};
+use rand_chacha::ChaCha20Rng;
+use rand_chacha::rand_core::SeedableRng;
 use serde::{Deserialize, Serialize};
 use zerocopy::IntoBytes;
 
@@ -107,7 +109,7 @@ pub fn bytes_to_public_key(bytes: &[u8]) -> Result<PublicKey> {
 /// # }
 /// ```
 pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result<Vec<u8>, Error> {
-    let (kyber_ciphertext, shared_secret) = encapsulate(server_pubkey, &mut rand::thread_rng())
+    let (kyber_ciphertext, shared_secret) = encapsulate(server_pubkey, &mut ChaCha20Rng::from_entropy())
         .map_err(|e| anyhow!("Encapsulation failed: {}", e))?;
 
     debug_assert_eq!(kyber_ciphertext.as_bytes().len(), KYBER_CIPHERTEXT_BYTES);

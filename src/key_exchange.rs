@@ -3,9 +3,11 @@
 use anyhow::{anyhow, Error};
 use hkdf::Hkdf;
 use kyberlib::{keypair, SharedSecret};
-use rand::thread_rng;
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use sha2::Sha256;
 use zerocopy::IntoBytes;
+use kyberlib::{RngCore, CryptoRng};
 
 /// Kyber-768 key sizes
 pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
@@ -39,6 +41,6 @@ pub fn derive_chacha_key(shared_secret: &SharedSecret) -> [u8; 32] {
 /// # }
 /// ```
 pub fn generate_keypair() -> std::result::Result<kyberlib::Keypair, Error> {
-    let mut rng = thread_rng();
+    let mut rng = ChaCha20Rng::from_entropy();
     keypair(&mut rng).map_err(|e| anyhow!("Key generation failed: {}", e))
 }
