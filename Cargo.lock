@@ -547,6 +547,7 @@ dependencies = [
  "hkdf",
  "kyberlib",
  "rand",
+ "rand_chacha",
  "serde",
  "serde_bytes",
  "sha2",
