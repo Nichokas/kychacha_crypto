@@ -2,17 +2,12 @@
 
 use anyhow::{anyhow, Error};
 use hkdf::Hkdf;
-use kyberlib::{keypair, SharedSecret};
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha256;
 use zerocopy::IntoBytes;
-use kyberlib::{RngCore, CryptoRng};
-
-/// Kyber-768 key sizes
-pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
-/// Kyber-768 key sizes
-pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
+use libcrux_ml_kem::*;
+use libcrux_ml_kem::mlkem768::MlKem768KeyPair;
 
 /// Derives 256-bit ChaCha20 key from Kyber shared secret
 ///
@@ -20,7 +15,7 @@ pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
 ///
 /// # Security
 /// Context string prevents key reuse in different protocol components
-pub fn derive_chacha_key(shared_secret: &SharedSecret) -> [u8; 32] {
+pub fn derive_chacha_key(shared_secret: &MlKemSharedSecret) -> [u8; 32] {
     let hk = Hkdf::<Sha256>::new(None, shared_secret.as_bytes());
     let mut okm = [0u8; 32];
     hk.expand(b"chacha-encryption-v1", &mut okm)
@@ -28,7 +23,7 @@ pub fn derive_chacha_key(shared_secret: &SharedSecret) -> [u8; 32] {
     okm
 }
 
-/// Generates CPA-secure Kyber-1024 keypair
+/// Generates ML-KEM keypair
 ///
 /// # Example
 /// ```
@@ -36,11 +31,13 @@ pub fn derive_chacha_key(shared_secret: &SharedSecret) -> [u8; 32] {
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::generate_keypair;
 ///
-/// let keypair = generate_keypair()?;
+/// let keypair = generate_keypair();
 /// Ok(())
 /// # }
 /// ```
-pub fn generate_keypair() -> std::result::Result<kyberlib::Keypair, Error> {
-    let mut rng = ChaCha20Rng::from_entropy();
-    keypair(&mut rng).map_err(|e| anyhow!("Key generation failed: {}", e))
+pub fn generate_keypair() -> MlKem768KeyPair {
+    let mut rng = ChaCha20Rng::from_os_rng();
+    let mut randomness = [0u8; 64];
+    rng.fill(&mut randomness);
+    mlkem768::generate_key_pair(randomness)
 }
