@@ -14,10 +14,10 @@ use chacha20poly1305::{
 ///
 /// // do not use this on your code, instead use encrypt fn
 /// let key = [0u8; 32];
-/// let (nonce, cifrado) = encrypt_with_key(&key, b"mensaje").unwrap();
+/// let (nonce, encrypted) = encrypt_with_key(&key, b"message").unwrap();
 /// ```
 ///
-/// # Errores
+/// # Errors
 /// - key ≠ 32 bytes
 /// - Error while encrypting
 pub fn encrypt_with_key(key: &[u8; 32], plaintext: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
@@ -42,12 +42,12 @@ pub fn encrypt_with_key(key: &[u8; 32], plaintext: &[u8]) -> Result<(Vec<u8>, Ve
 ///
 /// let key = [0u8; 32];
 /// // do not use this on your code, instead use encrypt fn
-/// let (nonce, encrypted) = encrypt_with_key(&key, b"mensaje").unwrap();
+/// let (nonce, encrypted) = encrypt_with_key(&key, b"message").unwrap();
 /// // do not use this on your code, instead use decrypt fn
 /// let decrypted_text = decrypt_with_key(&key, &nonce, &encrypted).unwrap();
 /// ```
 ///
-/// # Errores
+/// # Errors
 /// - Key ≠ 32 bytes or nonce ≠ 12 bytes
 /// - Failed auth or corruption on the data
 pub fn decrypt_with_key(key: &[u8; 32], nonce: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {

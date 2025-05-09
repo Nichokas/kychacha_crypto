@@ -487,7 +487,6 @@ dependencies = [
  "codspeed-criterion-compat",
  "hkdf",
  "libcrux-ml-kem",
- "rand",
  "rand_chacha",
  "serde",
  "serde_bytes",

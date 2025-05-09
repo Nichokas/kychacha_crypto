@@ -14,8 +14,7 @@ use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
 use rand_chacha::ChaCha20Rng;
 use libcrux_ml_kem::*;
 use libcrux_ml_kem::mlkem768::{MlKem768Ciphertext, MlKem768KeyPair, MlKem768PrivateKey, MlKem768PublicKey};
-use rand::Rng;
-use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::rand_core::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use zerocopy::IntoBytes;
 
@@ -35,10 +34,9 @@ pub struct EncryptedData {
 #[derive(Serialize, Deserialize)]
 pub struct TestData {
     #[serde(with = "serde_bytes")]
-    pub secret_key: [u8; 1088],
+    pub secret_key: [u8; 2400],
     #[serde(with = "serde_bytes")]
-    pub public_key: Vec<u8>,
-    #[serde(with = "serde_bytes")]
+    pub public_key: [u8; 1184],
     pub encrypted_data: Vec<u8>,
 }
 
@@ -102,7 +100,7 @@ pub fn bytes_to_public_key(bytes: &[u8; 1184]) -> Result<MlKem768PublicKey> {
 pub fn encrypt(server_pubkey: &MlKem768PublicKey, message: &[u8]) -> std::result::Result<Vec<u8>, Error> {
     let mut rng = ChaCha20Rng::from_os_rng();
     let mut randomness = [0u8; 32];
-    rng.fill(&mut randomness);
+    rng.fill_bytes(&mut randomness);
     let (kyber_ciphertext, shared_secret) = mlkem768::encapsulate(server_pubkey, randomness);
     
     let chacha_key = derive_chacha_key(&shared_secret);
@@ -151,11 +149,11 @@ pub fn decrypt(encrypted_data: &[u8], server_kp: &MlKem768KeyPair) -> Result<Str
     let kyber_ciphertext_array: MlKem768Ciphertext = data
         .ciphertext
         .try_into()
-        .map_err(|_| anyhow!("Tamaño de ciphertext inválido"))?;
+        .map_err(|_| anyhow!("Invalid ciphertext size"))?;
 
     let shared_secret = mlkem768::decapsulate(server_kp.private_key(),&kyber_ciphertext_array, );
     let chacha_key = derive_chacha_key(&shared_secret);
 
     let plaintext = decrypt_with_key(&chacha_key, &data.nonce, &data.encrypted_msg)?;
-    String::from_utf8(plaintext).context("UTF-8 inválido")
+    String::from_utf8(plaintext).context("Invalid UTF-8")
 }
