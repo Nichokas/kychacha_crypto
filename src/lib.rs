@@ -5,15 +5,16 @@ mod key_exchange;
 #[cfg(test)]
 mod tests;
 
+use std::io::Read;
 pub use encryption::*;
 pub use key_exchange::*;
 
 use anyhow::{anyhow, Context, Error, Result};
 use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
-use kyberlib::{decapsulate, encapsulate, KYBER_CIPHERTEXT_BYTES};
-pub use kyberlib::{Keypair, PublicKey, SecretKey};
 use rand_chacha::ChaCha20Rng;
-use rand_chacha::rand_core::SeedableRng;
+use libcrux_ml_kem::*;
+use libcrux_ml_kem::mlkem768::{MlKem768Ciphertext, MlKem768KeyPair, MlKem768PrivateKey, MlKem768PublicKey};
+use rand_chacha::rand_core::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use zerocopy::IntoBytes;
 
@@ -21,12 +22,10 @@ use zerocopy::IntoBytes;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EncryptedData {
     #[serde(with = "serde_bytes")]
-    /// Kyber ciphertext (1568 bytes)
-    pub ciphertext: Vec<u8>,
-    #[serde(with = "serde_bytes")]
-    /// ChaCha20 random nonce (12 bytes)
+    /// Kyber ciphertext
+    pub ciphertext: [u8; 1088],
+    /// ChaCha20 random nonce
     pub nonce: Vec<u8>,
-    #[serde(with = "serde_bytes")]
     /// Encrypted message with authentication tag
     pub encrypted_msg: Vec<u8>,
 }
@@ -34,8 +33,10 @@ pub struct EncryptedData {
 /// (only for tests)
 #[derive(Serialize, Deserialize)]
 pub struct TestData {
-    pub secret_key: Vec<u8>,
-    pub public_key: Vec<u8>,
+    #[serde(with = "serde_bytes")]
+    pub secret_key: [u8; 2400],
+    #[serde(with = "serde_bytes")]
+    pub public_key: [u8; 1184],
     pub encrypted_data: Vec<u8>,
 }
 
@@ -46,15 +47,14 @@ pub struct TestData {
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::{secret_key_to_bytes, generate_keypair};
 ///
-/// let keypair = generate_keypair()?;
+/// let keypair = generate_keypair();
 ///
-/// let pk_bytes = secret_key_to_bytes(&keypair.secret);
-/// assert_eq!(pk_bytes.len(), 2400);
+/// let pk_bytes = secret_key_to_bytes(&keypair.private_key());
 /// Ok(())
 /// # }
 /// ```
-pub fn secret_key_to_bytes(sk: &SecretKey) -> Vec<u8> {
-    sk.as_bytes().to_vec()
+pub fn secret_key_to_bytes(sk: &MlKem768PrivateKey) -> [u8; 2400] {
+    sk.as_slice().to_owned()
 }
 
 /// Converts public key to byte vector
@@ -64,35 +64,24 @@ pub fn secret_key_to_bytes(sk: &SecretKey) -> Vec<u8> {
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::{public_key_to_bytes, generate_keypair};
 ///
-/// let keypair = generate_keypair()?;
+/// let keypair = generate_keypair();
 ///
-/// let pk_bytes = public_key_to_bytes(&keypair.public);
-/// assert_eq!(pk_bytes.len(), 1184);
+/// let pk_bytes = public_key_to_bytes(&keypair.public_key());
 /// Ok(())
 /// # }
 /// ```
-pub fn public_key_to_bytes(pk: &PublicKey) -> Vec<u8> {
-    pk.as_bytes().to_vec()
+pub fn public_key_to_bytes(pk: &MlKem768PublicKey) -> [u8; 1184] {
+    pk.as_slice().to_owned()
 }
 
 /// Reconstructs secret key from bytes
-/// # Error
-/// Returns error if input ≠ 2400 bytes
-pub fn bytes_to_secret_key(bytes: &[u8]) -> Result<SecretKey> {
-    let array: [u8; KYBER_SECRET_KEY_BYTES] = bytes
-        .try_into()
-        .map_err(|_| anyhow!("Invalid secret key length"))?;
-    Ok(SecretKey::from(array))
+pub fn bytes_to_secret_key(bytes: &[u8;2400]) -> Result<MlKem768PrivateKey> {
+    Ok(MlKem768PrivateKey::from(bytes))
 }
 
 /// Reconstructs public key from bytes
-/// # Error
-/// Returns error if input ≠ 1184 bytes
-pub fn bytes_to_public_key(bytes: &[u8]) -> Result<PublicKey> {
-    let array: [u8; KYBER_PUBLIC_KEY_BYTES] = bytes
-        .try_into()
-        .map_err(|_| anyhow!("Invalid public key length"))?;
-    Ok(PublicKey::from(array))
+pub fn bytes_to_public_key(bytes: &[u8; 1184]) -> Result<MlKem768PublicKey> {
+    Ok(MlKem768PublicKey::from(bytes))
 }
 
 /// Hybrid encryption with Kyber + ChaCha
@@ -102,17 +91,17 @@ pub fn bytes_to_public_key(bytes: &[u8]) -> Result<PublicKey> {
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::{encrypt, generate_keypair};
 ///
-/// let keypair = generate_keypair()?;
+/// let keypair = generate_keypair();
 ///
-/// let data = encrypt(&keypair.public, b"the data")?;
+/// let data = encrypt(&keypair.public_key(), b"the data")?;
 /// Ok(())
 /// # }
 /// ```
-pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result<Vec<u8>, Error> {
-    let (kyber_ciphertext, shared_secret) = encapsulate(server_pubkey, &mut ChaCha20Rng::from_entropy())
-        .map_err(|e| anyhow!("Encapsulation failed: {}", e))?;
-
-    debug_assert_eq!(kyber_ciphertext.as_bytes().len(), KYBER_CIPHERTEXT_BYTES);
+pub fn encrypt(server_pubkey: &MlKem768PublicKey, message: &[u8]) -> std::result::Result<Vec<u8>, Error> {
+    let mut rng = ChaCha20Rng::from_os_rng();
+    let mut randomness = [0u8; 32];
+    rng.fill_bytes(&mut randomness);
+    let (kyber_ciphertext, shared_secret) = mlkem768::encapsulate(server_pubkey, randomness);
     
     let chacha_key = derive_chacha_key(&shared_secret);
     
@@ -120,8 +109,8 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result
 
     // Serialize data
     let data = EncryptedData {
-        ciphertext: kyber_ciphertext.as_bytes().to_vec(),
-        nonce: nonce.to_vec(),
+        ciphertext: kyber_ciphertext.as_slice().to_owned(),
+        nonce: nonce.as_slice().to_owned(),
         encrypted_msg: ciphertext,
     };
 
@@ -143,29 +132,28 @@ pub fn encrypt(server_pubkey: &PublicKey, message: &[u8]) -> std::result::Result
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use kychacha_crypto::{decrypt, encrypt, generate_keypair};
 ///
-/// let keypair = generate_keypair()?;
-/// let data = encrypt(&keypair.public, b"the data")?;
+/// let keypair = generate_keypair();
+/// let data = encrypt(&keypair.public_key(), b"the data")?;
 ///
 /// let decrypted = decrypt(&data, &keypair)?;
 /// Ok(())
 /// # }
 /// ```
-pub fn decrypt(encrypted_data: &[u8], server_kp: &Keypair) -> Result<String> {
+pub fn decrypt(encrypted_data: &[u8], server_kp: &MlKem768KeyPair) -> Result<String> {
     let config = bincode::config::standard()
         .with_big_endian()
         .with_variable_int_encoding();
 
     let (data, _size): (EncryptedData, usize) = borrow_decode_from_slice(encrypted_data, config)?;
 
-    let kyber_ciphertext_array: [u8; KYBER_CIPHERTEXT_BYTES] = data
+    let kyber_ciphertext_array: MlKem768Ciphertext = data
         .ciphertext
         .try_into()
-        .map_err(|_| anyhow!("Tamaño de ciphertext inválido"))?;
+        .map_err(|_| anyhow!("Invalid ciphertext size"))?;
 
-    let shared_secret = decapsulate(&kyber_ciphertext_array, &server_kp.secret)
-        .map_err(|e| anyhow!("Encapsulation failed: {}", e))?;
+    let shared_secret = mlkem768::decapsulate(server_kp.private_key(),&kyber_ciphertext_array, );
     let chacha_key = derive_chacha_key(&shared_secret);
 
     let plaintext = decrypt_with_key(&chacha_key, &data.nonce, &data.encrypted_msg)?;
-    String::from_utf8(plaintext).context("UTF-8 inválido")
+    String::from_utf8(plaintext).context("Invalid UTF-8")
 }

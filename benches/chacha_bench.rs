@@ -1,15 +1,17 @@
-// benches/chacha_bench.rs
+use chacha20poly1305::aead::rand_core::OsRng as ChaChaOsRng;
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::{aead::AeadCore, ChaCha20Poly1305, KeyInit};
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-use rand::RngCore;
+use rand_chacha::rand_core::{RngCore, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 
 fn key_derivation_benchmark(c: &mut Criterion) {
     c.bench_function("chacha_key_derivation", |b| {
         b.iter_batched(
             || {
                 let mut key = [0u8; 32];
-                rand::thread_rng().fill_bytes(&mut key);
+                let mut rng = ChaCha20Rng::from_os_rng();
+                rng.fill_bytes(&mut key);
                 key
             },
             |key| {
@@ -28,13 +30,15 @@ fn encryption_benchmark(c: &mut Criterion) {
         group.bench_with_input(format!("encrypt_{}B", size), size, |b, &size| {
             b.iter_batched(
                 || {
-                    let key = ChaCha20Poly1305::generate_key(&mut rand::thread_rng());
+                    let mut rng = ChaChaOsRng;
+                    let key = ChaCha20Poly1305::generate_key(&mut rng);
                     let msg = vec![0u8; size];
                     (key, msg)
                 },
                 |(key, msg)| {
                     let cipher = ChaCha20Poly1305::new(&key);
-                    let nonce = ChaCha20Poly1305::generate_nonce(&mut rand::thread_rng());
+                    let mut rng = ChaChaOsRng;
+                    let nonce = ChaCha20Poly1305::generate_nonce(&mut rng);
                     cipher.encrypt(&nonce, &*msg).unwrap()
                 },
                 BatchSize::SmallInput,
@@ -50,9 +54,11 @@ fn decryption_benchmark(c: &mut Criterion) {
         group.bench_with_input(format!("decrypt_{}B", size), size, |b, &size| {
             b.iter_batched(
                 || {
-                    let key = ChaCha20Poly1305::generate_key(&mut rand::thread_rng());
+                    let mut rng = ChaChaOsRng;
+                    let key = ChaCha20Poly1305::generate_key(&mut rng);
                     let cipher = ChaCha20Poly1305::new(&key);
-                    let nonce = ChaCha20Poly1305::generate_nonce(&mut rand::thread_rng());
+                    let mut rng = ChaChaOsRng;
+                    let nonce = ChaCha20Poly1305::generate_nonce(&mut rng);
                     let msg = vec![0u8; size];
                     let ct = cipher.encrypt(&nonce, &*msg).unwrap();
                     (key, nonce, ct)

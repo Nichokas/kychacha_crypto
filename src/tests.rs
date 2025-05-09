@@ -2,17 +2,17 @@
 use crate::TestData;
 use crate::{
     bytes_to_public_key, bytes_to_secret_key, decrypt, encrypt, generate_keypair, EncryptedData,
-    Keypair,
 };
 use anyhow::{Context, Result};
 use bincode::serde::{decode_from_slice, encode_to_vec};
+use libcrux_ml_kem::mlkem768::MlKem768KeyPair;
 
 #[test]
 fn test_round_trip() -> Result<()> {
-    let server_kp = generate_keypair()?;
+    let server_kp = generate_keypair();
     let msg = "Message for testing!!!";
 
-    let encrypted = encrypt(&server_kp.public, msg.as_bytes())?;
+    let encrypted = encrypt(&server_kp.public_key(), msg.as_bytes())?;
     let decrypted = decrypt(&encrypted, &server_kp)?;
 
     assert_eq!(decrypted, msg);
@@ -21,8 +21,8 @@ fn test_round_trip() -> Result<()> {
 
 #[test]
 fn test_tampered_ciphertext() {
-    let server_kp = generate_keypair().unwrap();
-    let encrypted = encrypt(&server_kp.public, "test".as_bytes()).unwrap();
+    let server_kp = generate_keypair();
+    let encrypted = encrypt(&server_kp.public_key(), "test".as_bytes()).unwrap();
 
     // Configuración estándar para bincode
     let config = bincode::config::standard()
@@ -41,10 +41,10 @@ fn test_tampered_ciphertext() {
 
 #[test]
 fn test_tampered_nonce() {
-    let server_kp = generate_keypair().unwrap();
-    let encrypted = encrypt(&server_kp.public, "test".as_bytes()).unwrap();
+    let server_kp = generate_keypair();
+    let encrypted = encrypt(&server_kp.public_key(), "test".as_bytes()).unwrap();
 
-    // Configuración estándar para bincode
+    // Standard configuration for bincode
     let config = bincode::config::standard()
         .with_big_endian()
         .with_variable_int_encoding();
@@ -61,10 +61,10 @@ fn test_tampered_nonce() {
 
 #[test]
 fn test_empty_message() -> Result<()> {
-    let server_kp = generate_keypair()?;
+    let server_kp = generate_keypair();
     let msg = "";
 
-    let encrypted = encrypt(&server_kp.public, msg.as_bytes())?;
+    let encrypted = encrypt(&server_kp.public_key(), msg.as_bytes())?;
     let decrypted = decrypt(&encrypted, &server_kp)?;
 
     assert_eq!(decrypted, msg);
@@ -73,10 +73,10 @@ fn test_empty_message() -> Result<()> {
 
 #[test]
 fn test_large_message() -> Result<()> {
-    let server_kp = generate_keypair()?;
+    let server_kp = generate_keypair();
     let msg = "A".repeat(10_000);
 
-    let encrypted = encrypt(&server_kp.public, msg.as_bytes())?;
+    let encrypted = encrypt(&server_kp.public_key(), msg.as_bytes())?;
     let decrypted = decrypt(&encrypted, &server_kp)?;
 
     assert_eq!(decrypted, msg);
@@ -85,11 +85,11 @@ fn test_large_message() -> Result<()> {
 
 #[test]
 fn test_wrong_key_decryption() {
-    let sender_kp = generate_keypair().unwrap();
-    let attacker_kp = generate_keypair().unwrap();
+    let server_kp = generate_keypair();
+    let attacker_kp = generate_keypair();
     let msg = "Confidential message.";
 
-    let encrypted = encrypt(&sender_kp.public, msg.as_bytes()).unwrap();
+    let encrypted = encrypt(&server_kp.public_key(), msg.as_bytes()).unwrap();
     let result = decrypt(&encrypted, &attacker_kp);
 
     assert!(result.is_err());
@@ -104,7 +104,7 @@ fn test_known_vector() -> Result<()> {
         .with_variable_int_encoding();
 
     let metadata = std::fs::metadata(path).context(format!(
-        "Archivo '{}' no encontrado. Ejecuta `cargo run --bin main` primero",
+        "File '{}' not found. Run `cargo run --bin main` first",
         path
     ))?;
 
@@ -112,7 +112,7 @@ fn test_known_vector() -> Result<()> {
 
     if metadata.len() < min_size {
         anyhow::bail!(
-            "Archivo corrupto: tamaño {} < mínimo esperado {}",
+            "Corrupted file: size {} < minimum expected {}",
             metadata.len(),
             min_size
         );
@@ -124,12 +124,13 @@ fn test_known_vector() -> Result<()> {
 
     let (test_data, _): (TestData, usize) = decode_from_slice(&bytes, config)?;
 
-    let server_kp = Keypair {
-        secret: bytes_to_secret_key(&test_data.secret_key)?,
-        public: bytes_to_public_key(&test_data.public_key)?,
-    };
+    let secret_key = bytes_to_secret_key(&test_data.secret_key)?;
+    let public_key = bytes_to_public_key(&test_data.public_key)?;
+    
+    // Crear keypair directamente con las claves cargadas
+    let server_kp = MlKem768KeyPair::from(secret_key, public_key);
 
     let decrypted = decrypt(&test_data.encrypted_data, &server_kp)?;
-    assert_eq!(decrypted, "Testing... 1234; Bytedream? :3");
+    assert_eq!(decrypted, "Testing... 1234; quantum??? :3");
     Ok(())
 }
