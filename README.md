@@ -1,12 +1,12 @@
 # Kychacha-crypto: Post-Quantum Secure Encryption Protocol
-## A post-quantum simple to use implementation for Kyber and ChaCha20
+## A post-quantum simple to use implementation for ML-KEM and ChaCha20
 [![CI](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml)
 [![Security audit](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml)
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
 ![Crates.io Version](https://img.shields.io/crates/v/kychacha_crypto)
 
 Hybrid cryptographic implementation using:
-- **Crystals-Kyber**: Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange.
+- **ML-KEM** (formerly Crystals-Kyber): Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange, standardized by NIST.
 - **ChaCha20-Poly1305**: Authenticated symmetric encryption.
 
 ## Architecture
@@ -18,9 +18,9 @@ sequenceDiagram
     participant Sender
     participant Recipient
 
-    Recipient-->>Sender: Recipient public key (Kyber pub key 1184 bytes)
+    Recipient-->>Sender: Recipient public key (ML-KEM pub key 1184 bytes)
     
-    Sender->>Sender: Encapsulate secret (Kyber)
+    Sender->>Sender: Encapsulate secret (ML-KEM)
     Note right of Sender: Generates ephemeral keypair and derives shared secret
     Sender->>Sender: Derive ChaCha key (HKDF-SHA256)
     Note right of Sender: Uses shared secret to derive symmetric key
@@ -28,7 +28,7 @@ sequenceDiagram
     
     Sender->>Recipient: Send {ciphertext, nonce, encrypted message}
     
-    Recipient->>Recipient: Decapsulate secret (Kyber)
+    Recipient->>Recipient: Decapsulate secret (ML-KEM)
     Note right of Recipient: Recovers shared secret
     Recipient->>Recipient: Derive ChaCha key (HKDF-SHA256)
     Note right of Recipient: Derives the same symmetric key
@@ -40,12 +40,12 @@ sequenceDiagram
 ## Technical Specifications
 
 ### 1. Key Exchange Protocol
-- **Algorithm**: Kyber-1024 (NIST PQC Round 3)
+- **Algorithm**: ML-KEM-1024 (NIST PQC Standard, formerly Kyber-1024)
 - **Key Parameters**:
   ```rust
-    pub const KYBER_PUBLIC_KEY_BYTES: usize = 1184;
-    pub const KYBER_SECRET_KEY_BYTES: usize = 2400;
-    pub const KYBER_CIPHERTEXT_BYTES: usize = 1568;
+    pub const MLKEM_PUBLIC_KEY_BYTES: usize = 1184;
+    pub const MLKEM_SECRET_KEY_BYTES: usize = 2400;
+    pub const MLKEM_CIPHERTEXT_BYTES: usize = 1568;
   ```
 - **Key Derivation**: HKDF-SHA256 with specific context
 ### 2. Symetric Encryption
@@ -56,14 +56,14 @@ sequenceDiagram
 ### 3. Encrypted Data Format
 The encrypted data is a serialized binary structure containing:
 
-- **Ciphertext**: Kyber ciphertext (1568 bytes).
+- **Ciphertext**: ML-KEM ciphertext (1568 bytes).
 - **Nonce**: ChaCha20 nonce (12 bytes).
 - **Encrypted Message**: Encrypted message with authentication tag.
 ```rust
     #[derive(Serialize, Deserialize, Debug)]
     pub struct EncryptedData {
         #[serde(with = "serde_bytes")]
-        pub ciphertext: Vec<u8>,    // Kyber ciphertext (1568 bytes)
+        pub ciphertext: Vec<u8>,    // ML-KEM ciphertext (1568 bytes)
         #[serde(with = "serde_bytes")]
         pub nonce: Vec<u8>,         // ChaCha20 nonce (12 bytes)
         #[serde(with = "serde_bytes")]
@@ -76,7 +76,7 @@ The encrypted data is a serialized binary structure containing:
 ```rust
 use kychacha_crypto::{generate_keypair, Keypair, decrypt, encrypt, PublicKey};
 
-// Generate a Kyber-1024 keypair
+// Generate a ML-KEM-1024 keypair
 let server_kp: Keypair = generate_keypair()?;
 
 let message = b"Secret message";
