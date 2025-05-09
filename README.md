@@ -59,14 +59,14 @@ sequenceDiagram
 use kychacha_crypto::{generate_keypair, Keypair, decrypt, encrypt, PublicKey};
 
 // Generate a ML-KEM-1024 keypair
-let server_kp: Keypair = generate_keypair()?;
+let server_kp: Keypair = generate_keypair();
 
 let message = b"Secret message";
 // Encrypt the message using the server's public key
-let encrypted_data: Vec<u8> = encrypt(&server_kp.public, message)?;
+let encrypted_data = encrypt(&server_kp.public, message)?;
 
 // Receive encrypted_data as &[u8] from the client
-let decrypted_message = decrypt(&encrypted_data, &server_kp)?;
+let decrypted_message = decrypt(&encrypted_data, &server_kp);
 assert_eq!(decrypted_message, "Secret message");
 ```
 > **Note**: The decrypt function assumes the original message is a valid UTF-8 string and returns a String. If the message contains non-UTF-8 binary data, decryption will fail.
@@ -76,8 +76,8 @@ assert_eq!(decrypted_message, "Secret message");
 use kychacha_crypto::{public_key_to_bytes, secret_key_to_bytes};
 
 // Convert keys to byte vectors
-let pk_bytes: Vec<u8> = public_key_to_bytes(&server_kp.public);
-let sk_bytes: Vec<u8> = secret_key_to_bytes(&server_kp.secret);
+let pk_bytes = public_key_to_bytes(&server_kp.public);
+let sk_bytes = secret_key_to_bytes(&server_kp.secret);
 
 // Reconstruct keys from bytes
 let public_key = PublicKey::from(pk_bytes.as_slice());
