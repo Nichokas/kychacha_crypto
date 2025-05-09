@@ -53,24 +53,6 @@ sequenceDiagram
 - **Key** Size: 256 bits
 - **Nonce**: 96 bits (randomly generated per message)
 
-### 3. Encrypted Data Format
-The encrypted data is a serialized binary structure containing:
-
-- **Ciphertext**: ML-KEM ciphertext (1568 bytes).
-- **Nonce**: ChaCha20 nonce (12 bytes).
-- **Encrypted Message**: Encrypted message with authentication tag.
-```rust
-    #[derive(Serialize, Deserialize, Debug)]
-    pub struct EncryptedData {
-        #[serde(with = "serde_bytes")]
-        pub ciphertext: Vec<u8>,    // ML-KEM ciphertext (1568 bytes)
-        #[serde(with = "serde_bytes")]
-        pub nonce: Vec<u8>,         // ChaCha20 nonce (12 bytes)
-        #[serde(with = "serde_bytes")]
-        pub encrypted_msg: Vec<u8>, // Encrypted message with authentication tag
-    }
-```
-
 ## Basic Usage
 ### Key Generation and encryption
 ```rust
