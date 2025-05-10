@@ -151,7 +151,7 @@ pub fn decrypt(encrypted_data: &[u8], private_key: &MlKem768PrivateKey) -> Resul
         .try_into()
         .map_err(|_| anyhow!("Invalid ciphertext size"))?;
 
-    let shared_secret = mlkem768::decapsulate(private_key,&kyber_ciphertext_array, );
+    let shared_secret = mlkem768::decapsulate(private_key,&kyber_ciphertext_array);
     let chacha_key = derive_chacha_key(&shared_secret);
 
     let plaintext = decrypt_with_key(&chacha_key, &data.nonce, &data.encrypted_msg)?;
