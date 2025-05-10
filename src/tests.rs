@@ -13,7 +13,7 @@ fn test_round_trip() -> Result<()> {
     let msg = "Message for testing!!!";
 
     let encrypted = encrypt(&server_kp.public_key(), msg.as_bytes())?;
-    let decrypted = decrypt(&encrypted, &server_kp)?;
+    let decrypted = decrypt(&encrypted, &server_kp.private_key())?;
 
     assert_eq!(decrypted, msg);
     Ok(())
@@ -35,7 +35,7 @@ fn test_tampered_ciphertext() {
     data.ciphertext[0] ^= 0x01;
 
     let tampered_data = encode_to_vec(&data, config).unwrap();
-    let result = decrypt(&tampered_data, &server_kp);
+    let result = decrypt(&tampered_data, &server_kp.private_key());
     assert!(result.is_err());
 }
 
@@ -55,7 +55,7 @@ fn test_tampered_nonce() {
     data.nonce[0] ^= 0x01;
 
     let tampered_data = encode_to_vec(&data, config).unwrap();
-    let result = decrypt(&tampered_data, &server_kp);
+    let result = decrypt(&tampered_data, &server_kp.private_key());
     assert!(result.is_err());
 }
 
@@ -65,7 +65,7 @@ fn test_empty_message() -> Result<()> {
     let msg = "";
 
     let encrypted = encrypt(&server_kp.public_key(), msg.as_bytes())?;
-    let decrypted = decrypt(&encrypted, &server_kp)?;
+    let decrypted = decrypt(&encrypted, &server_kp.private_key())?;
 
     assert_eq!(decrypted, msg);
     Ok(())
@@ -77,7 +77,7 @@ fn test_large_message() -> Result<()> {
     let msg = "A".repeat(10_000);
 
     let encrypted = encrypt(&server_kp.public_key(), msg.as_bytes())?;
-    let decrypted = decrypt(&encrypted, &server_kp)?;
+    let decrypted = decrypt(&encrypted, &server_kp.private_key())?;
 
     assert_eq!(decrypted, msg);
     Ok(())
@@ -90,7 +90,7 @@ fn test_wrong_key_decryption() {
     let msg = "Confidential message.";
 
     let encrypted = encrypt(&server_kp.public_key(), msg.as_bytes()).unwrap();
-    let result = decrypt(&encrypted, &attacker_kp);
+    let result = decrypt(&encrypted, &attacker_kp.private_key());
 
     assert!(result.is_err());
 }
@@ -130,7 +130,7 @@ fn test_known_vector() -> Result<()> {
     // Crear keypair directamente con las claves cargadas
     let server_kp = MlKem768KeyPair::from(secret_key, public_key);
 
-    let decrypted = decrypt(&test_data.encrypted_data, &server_kp)?;
+    let decrypted = decrypt(&test_data.encrypted_data, &server_kp.private_key())?;
     assert_eq!(decrypted, "Testing... 1234; quantum??? :3");
     Ok(())
 }
