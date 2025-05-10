@@ -135,11 +135,11 @@ pub fn encrypt(server_pubkey: &MlKem768PublicKey, message: &[u8]) -> std::result
 /// let keypair = generate_keypair();
 /// let data = encrypt(&keypair.public_key(), b"the data")?;
 ///
-/// let decrypted = decrypt(&data, &keypair)?;
+/// let decrypted = decrypt(&data, &keypair.private_key())?;
 /// Ok(())
 /// # }
 /// ```
-pub fn decrypt(encrypted_data: &[u8], server_kp: &MlKem768KeyPair) -> Result<String> {
+pub fn decrypt(encrypted_data: &[u8], private_key: &MlKem768PrivateKey) -> Result<String> {
     let config = bincode::config::standard()
         .with_big_endian()
         .with_variable_int_encoding();
@@ -151,7 +151,7 @@ pub fn decrypt(encrypted_data: &[u8], server_kp: &MlKem768KeyPair) -> Result<Str
         .try_into()
         .map_err(|_| anyhow!("Invalid ciphertext size"))?;
 
-    let shared_secret = mlkem768::decapsulate(server_kp.private_key(),&kyber_ciphertext_array, );
+    let shared_secret = mlkem768::decapsulate(private_key,&kyber_ciphertext_array);
     let chacha_key = derive_chacha_key(&shared_secret);
 
     let plaintext = decrypt_with_key(&chacha_key, &data.nonce, &data.encrypted_msg)?;

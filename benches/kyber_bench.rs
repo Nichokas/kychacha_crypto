@@ -76,7 +76,7 @@ fn full_decryption_benchmark(c: &mut Criterion) {
     for (name, ciphertext) in messages {
         c.bench_function(&format!("full_decryption_{}", name), |b| {
             b.iter(|| {
-                black_box(decrypt(&ciphertext, &server_kp).unwrap());
+                black_box(decrypt(&ciphertext, &server_kp.private_key()).unwrap());
             })
         });
     }
