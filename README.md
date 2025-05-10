@@ -1,12 +1,12 @@
 # Kychacha-crypto: Post-Quantum Secure Encryption Protocol
-## A post-quantum simple to use implementation for Kyber and ChaCha20
+## A post-quantum simple to use implementation for ML-KEM and ChaCha20
 [![CI](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/build.yaml)
 [![Security audit](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml)
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
 ![Crates.io Version](https://img.shields.io/crates/v/kychacha_crypto)
 
 Hybrid cryptographic implementation using:
-- **Crystals-Kyber**: Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange.
+- **ML-KEM** (formerly Crystals-Kyber): Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange, standardized by NIST.
 - **ChaCha20-Poly1305**: Authenticated symmetric encryption.
 
 ## Architecture
@@ -18,9 +18,9 @@ sequenceDiagram
     participant Sender
     participant Recipient
 
-    Recipient-->>Sender: Recipient public key (Kyber pub key 1184 bytes)
+    Recipient-->>Sender: Recipient public key (ML-KEM pub key 1184 bytes)
     
-    Sender->>Sender: Encapsulate secret (Kyber)
+    Sender->>Sender: Encapsulate secret (ML-KEM)
     Note right of Sender: Generates ephemeral keypair and derives shared secret
     Sender->>Sender: Derive ChaCha key (HKDF-SHA256)
     Note right of Sender: Uses shared secret to derive symmetric key
@@ -28,7 +28,7 @@ sequenceDiagram
     
     Sender->>Recipient: Send {ciphertext, nonce, encrypted message}
     
-    Recipient->>Recipient: Decapsulate secret (Kyber)
+    Recipient->>Recipient: Decapsulate secret (ML-KEM)
     Note right of Recipient: Recovers shared secret
     Recipient->>Recipient: Derive ChaCha key (HKDF-SHA256)
     Note right of Recipient: Derives the same symmetric key
