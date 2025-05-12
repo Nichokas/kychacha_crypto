@@ -13,7 +13,7 @@ use anyhow::{anyhow, Context, Error, Result};
 use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
 use rand_chacha::ChaCha20Rng;
 use libcrux_ml_kem::*;
-use libcrux_ml_kem::mlkem768::{MlKem768Ciphertext, MlKem768KeyPair, MlKem768PrivateKey, MlKem768PublicKey};
+pub use libcrux_ml_kem::mlkem768::{MlKem768Ciphertext, MlKem768KeyPair, MlKem768PrivateKey, MlKem768PublicKey};
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use zerocopy::IntoBytes;
