@@ -13,7 +13,17 @@ use anyhow::{anyhow, Context, Error, Result};
 use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
 use rand_chacha::ChaCha20Rng;
 use libcrux_ml_kem::*;
-use libcrux_ml_kem::mlkem768::{MlKem768Ciphertext, MlKem768KeyPair, MlKem768PrivateKey, MlKem768PublicKey};
+/// This is used for shared secret calculation on the second party.
+pub use libcrux_ml_kem::mlkem768::MlKem768Ciphertext;
+
+/// Used as a wraper to save public and provate key on one variable.
+pub use libcrux_ml_kem::mlkem768::MlKem768KeyPair;
+
+/// This key is used to decrypt messages and derive shared secrets (from cyphertext).
+pub use libcrux_ml_kem::mlkem768::MlKem768PrivateKey;
+
+/// This key is used to encrypt messages and encapsulate shared secrets.
+pub use libcrux_ml_kem::mlkem768::MlKem768PublicKey;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use zerocopy::IntoBytes;
