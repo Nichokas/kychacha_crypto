@@ -146,7 +146,10 @@ pub extern "C" fn decrypt(cprivkey: *mut c_char,encrypted_data: *mut c_char) -> 
             Err(_) => return error_msg("Error: Invalid private key")
         };
 
-        CString::new(kdecript(data_vec.as_slice(), &private_key).unwrap()).unwrap_or_default().into_raw()
+        match kdecript(data_vec.as_slice(), &private_key) {
+            Ok(decrypted_data) => CString::new(decrypted_data).unwrap_or_default().into_raw(),
+            Err(_) => error_msg("Error: Decryption failed"),
+        }
     }
 }
 
