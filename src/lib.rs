@@ -5,9 +5,6 @@ mod key_exchange;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "c_bindings")]
-mod ffi;
-
 use std::io::Read;
 pub use encryption::*;
 pub use key_exchange::*;

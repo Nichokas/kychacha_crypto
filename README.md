@@ -4,17 +4,10 @@
 [![Security audit](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml/badge.svg)](https://github.com/Nichokas/kychacha_crypto/actions/workflows/rustsec.yaml)
 [![CodSpeed Badge](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/Nichokas/kychacha_crypto)
 ![Crates.io Version](https://img.shields.io/crates/v/kychacha_crypto)
-[![DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Nichokas/kychacha_crypto)
 
 Hybrid cryptographic implementation using:
 - **ML-KEM** (formerly Crystals-Kyber): Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange, standardized by NIST.
 - **ChaCha20-Poly1305**: Authenticated symmetric encryption.
-
-## Language Bindings
-
-### Ruby Gem
-
-A Ruby gem binding is available that leverages the FFI interface to provide Kychacha functionality in Ruby applications: [kychacha_gem](https://github.com/Nichokas/kychacha_gem)
 
 ## Architecture
 
