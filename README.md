@@ -10,6 +10,12 @@ Hybrid cryptographic implementation using:
 - **ML-KEM** (formerly Crystals-Kyber): Post-Quantum secure Key Encapsulation Mechanism (KEM) for key exchange, standardized by NIST.
 - **ChaCha20-Poly1305**: Authenticated symmetric encryption.
 
+## Language Bindings
+
+### Ruby Gem
+
+A Ruby gem binding is available that leverages the FFI interface to provide Kychacha functionality in Ruby applications: [kychacha_gem](https://github.com/Nichokas/kychacha_gem)
+
 ## Architecture
 
 The following diagram describes the protocol flow between the "Sender" and the "Recipient":
