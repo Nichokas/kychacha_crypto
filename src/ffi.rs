@@ -26,8 +26,8 @@ pub extern "C" fn get_pub_key(keypair:*mut c_char) -> *mut c_char {
             Err(_) => return error_msg("Error: Invalid hex format in keypair"),
         };
 
-        if comb.len() <= 1184 {
-            return error_msg("Failed to reassemble keys: Invalid keypair");
+        if comb.len() < 3584 {
+            return error_msg("Failed to reassemble keys: Keypair must be at least 3584 bytes");
         }
         match <&[u8; 1184]>::try_from(&comb[..1184]) {
             Ok(pub_key_bytes) => CString::new(hex::encode(pub_key_bytes))
