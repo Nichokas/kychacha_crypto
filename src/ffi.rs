@@ -102,7 +102,12 @@ pub extern "C" fn encrypt(pubkey: *mut c_char, message: *mut c_char) -> *mut c_c
             Err(_) => return error_msg("Failed to create public key from bytes"),
         };
 
-        CString::new(hex::encode(kencrypt(&pubkey, msg_s.as_bytes()).unwrap())).unwrap_or_default().into_raw()
+        match kencrypt(&pubkey, msg_s.as_bytes()) {
+            Ok(encrypted_data) => CString::new(hex::encode(encrypted_data))
+                .unwrap_or_default()
+                .into_raw(),
+            Err(_) => error_msg("Error: Encryption failed"),
+        }
     }
 }
 
