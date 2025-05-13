@@ -2,14 +2,14 @@ use std::ffi::{c_char, CStr, CString};
 use crate::{bytes_to_public_key, bytes_to_secret_key, generate_keypair as kgk, public_key_to_bytes, secret_key_to_bytes, encrypt as kencrypt, decrypt as kdecript, MlKem768PublicKey, MlKem768PrivateKey};
 
 #[unsafe(no_mangle)]
-pub extern "C" fn generate_keypair() -> *mut c_char {
+pub extern "C" fn ffi_generate_keypair() -> *mut c_char {
     let keypair = kgk();
     let hex = hex::encode([public_key_to_bytes(keypair.public_key()).as_ref(),secret_key_to_bytes(keypair.private_key()).as_ref()].concat());
     CString::new(hex).unwrap_or_default().into_raw()
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn get_pub_key(keypair:*mut c_char) -> *mut c_char {
+pub extern "C" fn ffi_get_pub_key(keypair:*mut c_char) -> *mut c_char {
     unsafe {
         // Early returns for validation checks
         if keypair.is_null() {
@@ -39,7 +39,7 @@ pub extern "C" fn get_pub_key(keypair:*mut c_char) -> *mut c_char {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn get_priv_key(keypair: *mut c_char) -> *mut c_char {
+pub extern "C" fn ffi_get_priv_key(keypair: *mut c_char) -> *mut c_char {
     unsafe {
         // Early returns for validation checks
         if keypair.is_null() {
@@ -71,7 +71,7 @@ pub extern "C" fn get_priv_key(keypair: *mut c_char) -> *mut c_char {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn encrypt(pubkey: *mut c_char, message: *mut c_char) -> *mut c_char {
+pub extern "C" fn ffi_encrypt(pubkey: *mut c_char, message: *mut c_char) -> *mut c_char {
     unsafe {
         // Check for null pointer
         if pubkey.is_null() || message.is_null(){
@@ -112,7 +112,7 @@ pub extern "C" fn encrypt(pubkey: *mut c_char, message: *mut c_char) -> *mut c_c
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn decrypt(cprivkey: *mut c_char,encrypted_data: *mut c_char) -> *mut c_char {
+pub extern "C" fn ffi_decrypt(cprivkey: *mut c_char,encrypted_data: *mut c_char) -> *mut c_char {
     unsafe {
         // Check for null pointer
         if cprivkey.is_null() || encrypted_data.is_null(){
@@ -161,7 +161,7 @@ fn error_msg(msg:&str) -> *mut c_char {
 
 
 #[unsafe(no_mangle)]
-pub extern "C" fn free_string(ptr: *mut c_char) {
+pub extern "C" fn ffi_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         unsafe {
             drop(CString::from_raw(ptr));
