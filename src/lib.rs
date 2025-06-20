@@ -90,18 +90,24 @@ pub fn bytes_to_public_key(bytes: &Vec<u8>) -> PublicKey {
 
 fn select_oqs() -> kem::Kem {
     oqs::init();
+
     #[cfg(feature = "mlkem512")]
     {
-        oqs::kem::Kem::new(kem::Algorithm::MlKem512).unwrap()
+        return kem::Kem::new(kem::Algorithm::MlKem512).unwrap();
     }
+
     #[cfg(feature = "mlkem768")]
     {
-        kem::Kem::new(kem::Algorithm::MlKem768).unwrap()
+        return kem::Kem::new(kem::Algorithm::MlKem768).unwrap();
     }
+
     #[cfg(feature = "mlkem1024")]
     {
-        oqs::kem::Kem::new(kem::Algorithm::MlKem1024).unwrap()
+        return kem::Kem::new(kem::Algorithm::MlKem1024).unwrap();
     }
+
+    // Default fallback if no feature is enabled
+    panic!("No ML-KEM algorithm feature selected")
 }
 
 /// Hybrid encryption with Kyber + ChaCha
@@ -160,14 +166,8 @@ pub fn encrypt(server_pubkey: PublicKey, message: &[u8]) -> std::result::Result<
 /// # }
 /// ```
 pub fn decrypt(encrypted_data: &[u8], private_key: &SecretKey) -> Result<String> {
-    oqs::init();
-    #[cfg(feature = "mlkem512")]
-    let kem = oqs::kem::Kem::new(kem::Algorithm::MlKem512).unwrap();
-    #[cfg(feature = "mlkem768")]
-    let kem = kem::Kem::new(kem::Algorithm::MlKem768).unwrap();
-    #[cfg(feature = "mlkem1024")]
-    let kem = oqs::kem::Kem::new(oqs::kem::Algorithm::MlKem1024).unwrap();
-
+    let kem = select_oqs();
+    
     let config = bincode::config::standard()
         .with_big_endian()
         .with_variable_int_encoding();

@@ -5,18 +5,24 @@ use kychacha_crypto::{decrypt, encrypt, generate_keypair};
 
 fn initialize() -> kem::Kem {
     oqs::init();
+
     #[cfg(feature = "mlkem512")]
     {
-        oqs::kem::Kem::new(kem::Algorithm::MlKem512).unwrap()
+        return kem::Kem::new(kem::Algorithm::MlKem512).unwrap();
     }
+
     #[cfg(feature = "mlkem768")]
     {
-        kem::Kem::new(kem::Algorithm::MlKem768).unwrap()
+        return kem::Kem::new(kem::Algorithm::MlKem768).unwrap();
     }
+
     #[cfg(feature = "mlkem1024")]
     {
-        oqs::kem::Kem::new(kem::Algorithm::MlKem1024).unwrap()
+        return kem::Kem::new(kem::Algorithm::MlKem1024).unwrap();
     }
+
+    // Default fallback if no feature is enabled
+    panic!("No ML-KEM algorithm feature selected")
 }
 
 fn keygen_benchmark(c: &mut Criterion) {
