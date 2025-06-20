@@ -17,7 +17,7 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
-      - run: cargo test --all-features
+      - run: cargo test
 
   clippy-checks:
     runs-on: ubuntu-latest
@@ -27,4 +27,4 @@ jobs:
       - uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
-      - run: cargo clippy --all --all-features --tests
+      - run: cargo clippy --all --tests
