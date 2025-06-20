@@ -2,26 +2,7 @@ use chacha20poly1305::aead::rand_core::OsRng as ChaChaOsRng;
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::{aead::AeadCore, ChaCha20Poly1305, KeyInit};
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-use rand_chacha::rand_core::{RngCore, SeedableRng};
-use rand_chacha::ChaCha20Rng;
 
-fn key_derivation_benchmark(c: &mut Criterion) {
-    c.bench_function("chacha_key_derivation", |b| {
-        b.iter_batched(
-            || {
-                let mut key = [0u8; 32];
-                let mut rng = ChaCha20Rng::from_os_rng();
-                rng.fill_bytes(&mut key);
-                key
-            },
-            |key| {
-                let cipher = ChaCha20Poly1305::new_from_slice(&key).unwrap();
-                black_box(cipher);
-            },
-            BatchSize::SmallInput,
-        )
-    });
-}
 
 fn encryption_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("chacha_encryption");
@@ -77,7 +58,6 @@ criterion_group! {
     name = benches;
     config = Criterion::default().sample_size(1000);
     targets =
-        key_derivation_benchmark,
         encryption_benchmark,
         decryption_benchmark
 }

@@ -1,5 +1,5 @@
 // main.rs - Script to generate tests.bin
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bincode::serde::encode_to_vec;
 use kychacha_crypto::{encrypt, generate_keypair, public_key_to_bytes, secret_key_to_bytes, TestData};
 use std::fs::File;
@@ -13,12 +13,12 @@ fn main() -> Result<()> {
     let message = "Testing... 1234; quantum??? :3";
     
     // Encrypt the message
-    let encrypted_data = encrypt(&keypair.public_key(), message.as_bytes())?;
+    let encrypted_data = encrypt(keypair.public_key.clone(), message.as_bytes())?;
     
     // Create the TestData structure
     let test_data = TestData {
-        secret_key: secret_key_to_bytes(&keypair.private_key()),
-        public_key: public_key_to_bytes(&keypair.public_key()),
+        secret_key: secret_key_to_bytes(keypair.private_key),
+        public_key: public_key_to_bytes(keypair.public_key),
         encrypted_data,
     };
     

@@ -1,9 +1,23 @@
 // benches/kyber_bench.rs
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
+use oqs::kem;
 use kychacha_crypto::{decrypt, encrypt, generate_keypair};
-use libcrux_ml_kem::mlkem768::{self};
-use rand_chacha::rand_core::{RngCore, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+
+fn initialize() -> kem::Kem {
+    oqs::init();
+    #[cfg(feature = "mlkem512")]
+    {
+        oqs::kem::Kem::new(kem::Algorithm::MlKem512).unwrap()
+    }
+    #[cfg(feature = "mlkem768")]
+    {
+        kem::Kem::new(kem::Algorithm::MlKem768).unwrap()
+    }
+    #[cfg(feature = "mlkem1024")]
+    {
+        oqs::kem::Kem::new(kem::Algorithm::MlKem1024).unwrap()
+    }
+}
 
 fn keygen_benchmark(c: &mut Criterion) {
     c.bench_function("mlkem_keypair_generation", |b| {
@@ -18,24 +32,20 @@ fn encapsulation_benchmark(c: &mut Criterion) {
 
     c.bench_function("mlkem_encapsulation", |b| {
         b.iter(|| {
-            let mut rng = ChaCha20Rng::from_os_rng();
-            let mut randomness = [0u8; 32];
-            rng.fill_bytes(&mut randomness);
-            let (_ct, _ss) = black_box(mlkem768::encapsulate(&server_kp.public_key(), randomness));
+            let kem = initialize();
+            let (_ct, _ss) = black_box(kem.encapsulate(&server_kp.public_key)).unwrap();
         });
     });
 }
 
 fn decapsulation_benchmark(c: &mut Criterion) {
+    let kem = initialize();
     let server_kp = generate_keypair();
-    let mut rng = ChaCha20Rng::from_os_rng();
-    let mut randomness = [0u8; 32];
-    rng.fill_bytes(&mut randomness);
-    let (ct, _) = mlkem768::encapsulate(&server_kp.public_key(), randomness);
+    let (ct, _) = kem.encapsulate(&server_kp.public_key).unwrap();
 
     c.bench_function("mlkem_decapsulation", |b| {
         b.iter(|| {
-            black_box(mlkem768::decapsulate(&server_kp.private_key(), &ct));
+            black_box(kem.decapsulate(&server_kp.private_key, &ct).unwrap());
         });
     });
 }
@@ -52,7 +62,7 @@ fn full_encryption_benchmark(c: &mut Criterion) {
         c.bench_function(&format!("full_encryption_{}", name), |b| {
             b.iter_batched(
                 || message.clone(),
-                |msg| black_box(encrypt(&server_kp.public_key(), &msg)),
+                |msg| black_box(encrypt(server_kp.public_key.clone(), &msg)),
                 BatchSize::SmallInput,
             )
         });
@@ -62,21 +72,21 @@ fn full_encryption_benchmark(c: &mut Criterion) {
 fn full_decryption_benchmark(c: &mut Criterion) {
     let server_kp = generate_keypair();
     let messages = vec![
-        ("short", encrypt(&server_kp.public_key(), b"test").unwrap()),
+        ("short", encrypt(server_kp.public_key.clone(), b"test").unwrap()),
         (
             "medium",
-            encrypt(&server_kp.public_key(), &vec![0u8; 1024]).unwrap(),
+            encrypt(server_kp.public_key.clone(), &vec![0u8; 1024]).unwrap(),
         ),
         (
             "long",
-            encrypt(&server_kp.public_key(), &vec![0u8; 4096]).unwrap(),
+            encrypt(server_kp.public_key, &vec![0u8; 4096]).unwrap(),
         ),
     ];
 
     for (name, ciphertext) in messages {
         c.bench_function(&format!("full_decryption_{}", name), |b| {
             b.iter(|| {
-                black_box(decrypt(&ciphertext, &server_kp.private_key()).unwrap());
+                black_box(decrypt(&ciphertext, &server_kp.private_key).unwrap());
             })
         });
     }
