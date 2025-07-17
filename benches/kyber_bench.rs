@@ -28,13 +28,13 @@ fn initialize() -> kem::Kem {
 fn keygen_benchmark(c: &mut Criterion) {
     c.bench_function("mlkem_keypair_generation", |b| {
         b.iter(|| {
-            black_box(generate_keypair());
+            black_box(generate_keypair().unwrap());
         });
     });
 }
 
 fn encapsulation_benchmark(c: &mut Criterion) {
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair().unwrap();
 
     c.bench_function("mlkem_encapsulation", |b| {
         b.iter(|| {
@@ -46,7 +46,7 @@ fn encapsulation_benchmark(c: &mut Criterion) {
 
 fn decapsulation_benchmark(c: &mut Criterion) {
     let kem = initialize();
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair().unwrap();
     let (ct, _) = kem.encapsulate(&server_kp.public_key).unwrap();
 
     c.bench_function("mlkem_decapsulation", |b| {
@@ -57,7 +57,7 @@ fn decapsulation_benchmark(c: &mut Criterion) {
 }
 
 fn full_encryption_benchmark(c: &mut Criterion) {
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair().unwrap();
     let messages = vec![
         ("short", b"test".to_vec()),
         ("medium", vec![0u8; 1024]),
@@ -68,7 +68,7 @@ fn full_encryption_benchmark(c: &mut Criterion) {
         c.bench_function(&format!("full_encryption_{}", name), |b| {
             b.iter_batched(
                 || message.clone(),
-                |msg| black_box(encrypt(server_kp.public_key.clone(), &msg)),
+                |msg| black_box(encrypt(server_kp.public_key.clone(), &msg).unwrap()),
                 BatchSize::SmallInput,
             )
         });
@@ -76,7 +76,7 @@ fn full_encryption_benchmark(c: &mut Criterion) {
 }
 
 fn full_decryption_benchmark(c: &mut Criterion) {
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair().unwrap();
     let messages = vec![
         ("short", encrypt(server_kp.public_key.clone(), b"test").unwrap()),
         (
