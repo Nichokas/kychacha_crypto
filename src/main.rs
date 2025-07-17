@@ -7,7 +7,7 @@ use std::io::Write;
 
 fn main() -> Result<()> {
     // Generate a new keypair
-    let keypair = generate_keypair();
+    let keypair = generate_keypair()?;
     
     // Test message that matches the expected one in test_known_vector
     let message = "Testing... 1234; quantum??? :3";

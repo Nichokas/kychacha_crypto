@@ -8,7 +8,7 @@ use bincode::serde::{decode_from_slice, encode_to_vec};
 
 #[test]
 fn test_round_trip() -> Result<()> {
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair()?;
     let msg = "Message for testing!!!";
 
     let encrypted = encrypt(server_kp.public_key, msg.as_bytes())?;
@@ -20,7 +20,7 @@ fn test_round_trip() -> Result<()> {
 
 #[test]
 fn test_tampered_ciphertext() {
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair().unwrap();
     let encrypted = encrypt(server_kp.public_key, "test".as_bytes()).unwrap();
 
     // Configuración estándar para bincode
@@ -40,7 +40,7 @@ fn test_tampered_ciphertext() {
 
 #[test]
 fn test_tampered_nonce() {
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair().unwrap();
     let encrypted = encrypt(server_kp.public_key, "test".as_bytes()).unwrap();
 
     // Standard configuration for bincode
@@ -60,7 +60,7 @@ fn test_tampered_nonce() {
 
 #[test]
 fn test_empty_message() -> Result<()> {
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair()?;
     let msg = "";
 
     let encrypted = encrypt(server_kp.public_key, msg.as_bytes())?;
@@ -72,7 +72,7 @@ fn test_empty_message() -> Result<()> {
 
 #[test]
 fn test_large_message() -> Result<()> {
-    let server_kp = generate_keypair();
+    let server_kp = generate_keypair()?;
     let msg = "A".repeat(10_000);
 
     let encrypted = encrypt(server_kp.public_key, msg.as_bytes())?;
@@ -84,8 +84,8 @@ fn test_large_message() -> Result<()> {
 
 #[test]
 fn test_wrong_key_decryption() {
-    let server_kp = generate_keypair();
-    let attacker_kp = generate_keypair();
+    let server_kp = generate_keypair().unwrap();
+    let attacker_kp = generate_keypair().unwrap();
     let msg = "Confidential message.";
 
     let encrypted = encrypt(server_kp.public_key, msg.as_bytes()).unwrap();
@@ -123,8 +123,8 @@ fn test_known_vector() -> Result<()> {
 
     let (test_data, _): (TestData, usize) = decode_from_slice(&bytes, config)?;
 
-    let secret_key = bytes_to_secret_key(&test_data.secret_key);
-    let public_key = bytes_to_public_key(&test_data.public_key);
+    let secret_key = bytes_to_secret_key(&test_data.secret_key)?;
+    let public_key = bytes_to_public_key(&test_data.public_key)?;
     
     // Crear keypair directamente con las claves cargadas
     let server_kp:MlKemKeyPair = MlKemKeyPair {
