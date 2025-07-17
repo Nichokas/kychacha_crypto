@@ -530,7 +530,7 @@ dependencies = [
 
 [[package]]
 name = "kychacha_crypto"
-version = "4.0.1"
+version = "4.1.0"
 dependencies = [
  "anyhow",
  "bincode",
