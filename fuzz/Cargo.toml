@@ -9,6 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+bincode = "2.0.1"
 
 [dependencies.kychacha_crypto]
 path = ".."
