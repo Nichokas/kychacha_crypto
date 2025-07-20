@@ -1,20 +1,22 @@
 // tests/test.rs
 use crate::{MlKemKeyPair, TestData};
 use crate::{
-    bytes_to_public_key, bytes_to_secret_key, decrypt, encrypt, generate_keypair, EncryptedData,
+    bytes_to_public_key, bytes_to_secret_key, decrypt_from_stream, encrypt, generate_keypair, EncryptedData, decrypt_from_reader
 };
 use anyhow::{Context, Result};
 use bincode::serde::{decode_from_slice, encode_to_vec};
+use std::fs::File;
+use std::io::{BufReader, Write};
+use std::error::Error;
+use bincode::de::read::SliceReader;
 
 #[test]
-fn test_round_trip() -> Result<()> {
-    let server_kp = generate_keypair()?;
-    let msg = "Message for testing!!!";
-
-    let encrypted = encrypt(server_kp.public_key, msg.as_bytes())?;
-    let decrypted = decrypt(&encrypted, &server_kp.private_key)?;
-
-    assert_eq!(decrypted, msg);
+fn test_round_trip() -> Result<(), Box<dyn Error>> {
+    let keypair = generate_keypair()?;
+    let encrypted_data = encrypt(keypair.public_key, b"secret message")?;
+    let reader = SliceReader::new(&encrypted_data);
+    let decrypted = decrypt_from_reader(reader, &keypair.private_key)?;
+    assert_eq!(decrypted, "secret message");
     Ok(())
 }
 
@@ -34,7 +36,8 @@ fn test_tampered_ciphertext() {
     data.ciphertext[0] ^= 0x01;
 
     let tampered_data = encode_to_vec(&data, config).unwrap();
-    let result = decrypt(&tampered_data, &server_kp.private_key);
+    let reader = SliceReader::new(&tampered_data);
+    let result = decrypt_from_reader(reader, &server_kp.private_key);
     assert!(result.is_err());
 }
 
@@ -54,7 +57,8 @@ fn test_tampered_nonce() {
     data.nonce[0] ^= 0x01;
 
     let tampered_data = encode_to_vec(&data, config).unwrap();
-    let result = decrypt(&tampered_data, &server_kp.private_key);
+    let reader = SliceReader::new(&tampered_data);
+    let result = decrypt_from_reader(reader, &server_kp.private_key);
     assert!(result.is_err());
 }
 
@@ -64,7 +68,8 @@ fn test_empty_message() -> Result<()> {
     let msg = "";
 
     let encrypted = encrypt(server_kp.public_key, msg.as_bytes())?;
-    let decrypted = decrypt(&encrypted, &server_kp.private_key)?;
+    let reader = SliceReader::new(&encrypted);
+    let decrypted = decrypt_from_reader(reader, &server_kp.private_key)?;
 
     assert_eq!(decrypted, msg);
     Ok(())
@@ -76,7 +81,8 @@ fn test_large_message() -> Result<()> {
     let msg = "A".repeat(10_000);
 
     let encrypted = encrypt(server_kp.public_key, msg.as_bytes())?;
-    let decrypted = decrypt(&encrypted, &server_kp.private_key)?;
+    let reader = SliceReader::new(&encrypted);
+    let decrypted = decrypt_from_reader(reader, &server_kp.private_key)?;
 
     assert_eq!(decrypted, msg);
     Ok(())
@@ -89,7 +95,8 @@ fn test_wrong_key_decryption() {
     let msg = "Confidential message.";
 
     let encrypted = encrypt(server_kp.public_key, msg.as_bytes()).unwrap();
-    let result = decrypt(&encrypted, &attacker_kp.private_key);
+    let reader = SliceReader::new(&encrypted);
+    let result = decrypt_from_reader(reader, &attacker_kp.private_key);
 
     assert!(result.is_err());
 }
@@ -132,7 +139,24 @@ fn test_known_vector() -> Result<()> {
         private_key: secret_key.clone()
     };
 
-    let decrypted = decrypt(&test_data.encrypted_data, &server_kp.private_key)?;
+    let reader = SliceReader::new(&test_data.encrypted_data);
+    let decrypted = decrypt_from_reader(reader, &server_kp.private_key)?;
     assert_eq!(decrypted, "Testing... 1234; quantum??? :3");
     Ok(())
+}
+
+#[test]
+fn file_round_trip() -> Result<(), Box<dyn Error>> {
+        let keypair = generate_keypair()?;
+        let encrypted_data = encrypt(keypair.public_key, b"file content example")?;
+        {
+            let mut file = File::create("encrypted.bin")?;
+            file.write_all(&encrypted_data)?;
+        }
+        let file = File::open("encrypted.bin")?;
+        let reader = BufReader::new(file);
+        let decrypted = decrypt_from_stream(reader, &keypair.private_key)?;
+        assert_eq!(decrypted, "file content example");
+        Ok(())
+
 }
