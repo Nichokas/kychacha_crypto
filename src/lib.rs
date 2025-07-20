@@ -1,4 +1,43 @@
 // lib.rs
+
+//! # Features
+//! |Name|Default?|What does it do?                     |
+//! |----|--------|-------------------------------------|
+//! |mlkem512|x|Select Ml-Kem security level to 512 (private key size)|
+//! |mlkem768|✅|Select Ml-Kem security level to 768 (private key size)|
+//! |mlkem1024|x|Select Ml-Kem security level to 1024 (private key size)|
+//! |bincode_normal_limit|✅|Puts bincode serialization size limit to 500mb|
+//! |bincode_big_limit|x|Puts bincode serialization size limit to 2gb|
+//! |bincode_no_limit|x|Removes bincode serialization size limit, if you select this option your program is going to be susceptible to OOM attacks ("memory overflow")|
+//! # Which functions to use
+//! |Situation|Encrypt|Decrypt|
+//! |---|---|---|
+//! |Using files/using [`std::io::Read`]|[`encrypt`]|[`decrypt_from_reader`]|
+//! |Using variables/not using [`std::io::Read`]|[`encrypt`]|[`decrypt_from_stream`]|
+//! # A Simple Example
+//! ```
+//! use std::io::Cursor;
+//! use std::error::Error;
+//! use bincode::de::read::SliceReader;
+//! use kychacha_crypto::{decrypt_from_reader, encrypt, generate_keypair};
+//!
+//! fn main() -> Result<(), Box<dyn Error>> {
+//!     // Generate keypairs for alice and bob
+//!     let alice_keypair = generate_keypair()?;
+//!     let bob_keypair = generate_keypair()?;
+//!
+//!     // encrypt the text to bob
+//!     let ciphertext = encrypt(bob_keypair.public_key, b"Hi bob! :D")?;
+//!
+//!     // read the text as bob
+//!     let reader = SliceReader::new(&ciphertext);
+//!
+//!     let plaintext = decrypt_from_reader(reader,&bob_keypair.private_key)?;
+//!
+//!     assert_eq!(plaintext, "Hi bob! :D".to_string());
+//!     Ok(())
+//! }
+//! ```
 mod encryption;
 mod key_exchange;
 
@@ -154,7 +193,7 @@ fn select_bincode_config() -> Result<impl Config> {
                 .with_variable_int_encoding(),
         );
     }
-    anyhow::bail!("No ML-KEM algorithm feature selected")
+    anyhow::bail!("No bincode configuration feature selected")
 }
 
 /// Hybrid encryption with Kyber + ChaCha
