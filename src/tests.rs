@@ -15,9 +15,9 @@ use tempfile::tempfile;
 fn test_round_trip() -> Result<(), Box<dyn Error>> {
     let keypair = generate_keypair()?;
     let mut sink = Vec::new();
-    encrypt_stream(keypair.public_key,&mut Cursor::new(b"secret message"),&mut sink)?;
+    encrypt_stream(keypair.public_key, &mut Cursor::new(b"secret message"), &mut sink)?;
     let mut ciphertext_bytes = Vec::new();
-    decrypt_stream(&keypair.private_key,&mut Cursor::new(sink),&mut ciphertext_bytes)?;
+    decrypt_stream(&keypair.private_key, &mut Cursor::new(sink), &mut ciphertext_bytes)?;
     assert_eq!(String::from_utf8_lossy(&ciphertext_bytes), "secret message");
     Ok(())
 }
@@ -83,7 +83,7 @@ fn test_big_round_trip() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    assert_eq!(comp, true);
+    assert!(comp);
     Ok(())
 }
 

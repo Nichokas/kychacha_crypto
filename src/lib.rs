@@ -188,7 +188,7 @@ impl<R: Read> Reader for IoRWrapper<R> {
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use std::fs::File;
 /// use std::io::{Cursor, Write, BufReader};
-/// use std::io::{};
+///
 /// use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
 ///
 /// // Create file that we want to encrypt
@@ -230,7 +230,7 @@ pub fn encrypt_stream<R: Read, W: Write>(
 
     let mut writer = IoWWrapper(io_writer);
 
-    encode_into_writer(ct.into_vec(),&mut writer, config)?;
+    encode_into_writer(ct.into_vec(), &mut writer, config)?;
 
     encrypt_with_key_stream(&chacha_key, reader, &mut writer.0)?;
 
@@ -245,7 +245,6 @@ pub fn encrypt_stream<R: Read, W: Write>(
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use std::fs::File;
 /// use std::io::{Cursor, Write, BufReader};
-/// use std::io::{};
 /// use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
 ///
 /// // Create file that we want to encrypt
@@ -282,14 +281,14 @@ pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R
         .ok_or_else(|| anyhow::anyhow!("Error while retreating the ciphertext from bytes"))?;
 
     let ss = kem
-        .decapsulate(private_key,&ct)
-        .map_err(|e| anyhow::anyhow!("Error decapsulando KEM: {}", e))?;
+        .decapsulate(private_key, &ct)
+        .map_err(|e| anyhow::anyhow!("Error decapsulating KEM: {}", e))?;
     let chacha_key = derive_chacha_key(ss)?;
 
     let mut nonce_bytes = [0u8; 12];
     wreader.0.read_exact(&mut nonce_bytes)?;
 
-    decrypt_with_key_stream(&chacha_key,&nonce_bytes,wreader,writer)?;
+    decrypt_with_key_stream(&chacha_key, &nonce_bytes, wreader, writer)?;
 
     Ok(())
 }
