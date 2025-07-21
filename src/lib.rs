@@ -230,7 +230,7 @@ pub fn encrypt_stream<R: Read, W: Write>(
 
     let mut writer = IoWWrapper(io_writer);
 
-    encode_into_writer(ct.into_vec(),&mut writer, config)?;
+    encode_into_writer(ct.into_vec(), &mut writer, config)?;
 
     encrypt_with_key_stream(&chacha_key, reader, &mut writer.0)?;
 
