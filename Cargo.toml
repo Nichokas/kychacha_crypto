@@ -19,13 +19,10 @@ exclude = [
 ]
 
 [features]
-default = ["mlkem768", "bincode_big_limit"]
+default = ["mlkem768"]
 mlkem512 = []
 mlkem768 = []
 mlkem1024 = []
-bincode_normal_limit = []
-bincode_big_limit = []
-bincode_no_limit = []
 
 [dependencies]
 anyhow = "1.0.98"
@@ -37,8 +34,8 @@ bincode = { version = "2.0.1", features = ["serde"] }
 serde_bytes = "0.11.17"
 oqs = { version = "0.11.0", default-features = false, features = ["ml_kem"] }
 
-
 [dev-dependencies]
+tempfile = "3.20.0"
 criterion = { version = "3.0.3", package = "codspeed-criterion-compat" }
 
 

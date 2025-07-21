@@ -1,35 +1,38 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use kychacha_crypto::{bytes_to_secret_key, encrypt, generate_keypair, decrypt_from_reader};
-use bincode::de::read::SliceReader;
+use kychacha_crypto::{bytes_to_secret_key, encrypt_stream, generate_keypair, decrypt_stream};
+use std::io::{Cursor, Write};
+use tempfile::tempfile;
 
 fuzz_target!(|data: &[u8]| {
     // init -----------
     let keypair = generate_keypair().unwrap();
-    let ciphertext = encrypt(keypair.public_key, b"Hello World").unwrap();
+    let mut file = tempfile().unwrap();
+    encrypt_stream(keypair.public_key, &mut Cursor::new(b"Hello World"),&mut file).unwrap();
+    let mut uselessfile = tempfile().unwrap();
+    let mut fuzzing_file = tempfile().unwrap();
+    fuzzing_file.write_all(data).unwrap();
     // ----------------
 
     // all is fuzz
     if let Ok(secret_key) = bytes_to_secret_key(&data.to_vec()) {
-        let reader = SliceReader::new(data);
-        if let Ok(plaintext) = decrypt_from_reader(reader, &secret_key) {
+        if let Ok(plaintext) = decrypt_stream(&secret_key,&mut fuzzing_file, &mut uselessfile) {
             let _ = plaintext;
         }
     }
 
     // only data is fuzz
     {
-        let reader = SliceReader::new(data);
-        if let Ok(plaintext) = decrypt_from_reader(reader, &keypair.private_key) {
+
+        if let Ok(plaintext) = decrypt_stream(&keypair.private_key, &mut fuzzing_file, &mut uselessfile) {
             let _ = plaintext;
         }
     }
 
     // only key is fuzz
     if let Ok(secret_key) = bytes_to_secret_key(&data.to_vec()) {
-        let reader = SliceReader::new(&ciphertext);
-        if let Ok(plaintext) = decrypt_from_reader(reader, &secret_key) {
+        if let Ok(plaintext) = decrypt_stream(&secret_key, &mut file, &mut uselessfile) {
             let _ = plaintext;
         }
     }
