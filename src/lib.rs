@@ -282,7 +282,7 @@ pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R
 
     let ss = kem
         .decapsulate(private_key, &ct)
-        .map_err(|e| anyhow::anyhow!("Error decapsulando KEM: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Error decapsulating KEM: {}", e))?;
     let chacha_key = derive_chacha_key(ss)?;
 
     let mut nonce_bytes = [0u8; 12];
