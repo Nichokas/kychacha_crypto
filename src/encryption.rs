@@ -50,7 +50,7 @@ pub(crate) fn decrypt_with_key_stream<R: Read, W: Write>(key: &[u8; 32], nonce: 
         match reader.0.read_exact(&mut len_bytes) {
             Ok(()) => (),
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
-            Err(e) => return Err(e).context("Fallo al leer la longitud del fragmento"),
+            Err(e) => return Err(e).context("Failed to read chunk length"),
         }
 
         let len = u64::from_le_bytes(len_bytes) as usize;
