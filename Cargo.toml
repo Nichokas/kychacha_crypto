@@ -1,11 +1,12 @@
 [package]
 name = "kychacha_crypto"
 description = "A Post-Quantum Secure Encryption Protocol using chacha20poly1305 and CRYSTALS-kyber"
-version = "4.1.0"
+version = "5.0.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/Nichokas/kychacha_crypto"
 readme = "README.md"
+build = "build.rs"
 
 exclude = [
     ".cargo_vcs_info.json",
@@ -29,15 +30,13 @@ chacha20poly1305 = { version = "0.10.1", features = ["std"] }
 hkdf = "0.12.4"
 serde = { version = "1.0.219", features = ["derive"] }
 sha2 = "0.10.9"
-zerocopy = "0.8.26"
 bincode = { version = "2.0.1", features = ["serde"] }
 serde_bytes = "0.11.17"
-rand_chacha = "0.9.0"
 oqs = { version = "0.11.0", default-features = false, features = ["ml_kem"] }
 
-
 [dev-dependencies]
-criterion = { version = "2.7.2", package = "codspeed-criterion-compat" }
+tempfile = "3.20.0"
+criterion = { version = "3.0.3", package = "codspeed-criterion-compat" }
 
 
 [[bench]]

@@ -1,0 +1,37 @@
+[package]
+name = "kychacha_crypto-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+bincode = "2.0.1"
+tempfile = "3.20.0"
+
+[dependencies.kychacha_crypto]
+path = ".."
+
+[[bin]]
+name = "bytes_pub"
+path = "fuzz_targets/types/bytes_pub.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bytes_sec"
+path = "fuzz_targets/types/bytes_sec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decrypt"
+path = "fuzz_targets/fn/decrypt.rs"
+test = false
+doc = false
+bench = false

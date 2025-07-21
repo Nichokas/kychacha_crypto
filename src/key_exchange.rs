@@ -16,7 +16,7 @@ use anyhow::Result;
 ///
 /// # Errors
 /// Returns error if HKDF expansion fails
-pub fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]> {
+pub(crate) fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]> {
     let hk = Hkdf::<Sha256>::new(None, &shared_secret.into_vec());
     let mut okm = [0u8; 32];
     hk.expand(b"chacha-encryption-v1", &mut okm)

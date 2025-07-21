@@ -1,64 +1,69 @@
 //! Symmetric cypher using ChaCha20Poly1305 (AEAD).
 
+use std::io::{Read, Write};
 use anyhow::{anyhow, Context, Result};
 use chacha20poly1305::{
     aead::{AeadCore, AeadMutInPlace, KeyInit, OsRng},
     ChaCha20Poly1305, Nonce,
 };
+use chacha20poly1305::aead::{Aead, Payload};
+use crate::IoRWrapper;
 
-/// Encrypt a message with ChaCha20Poly1305.
-///
-/// # Example
-/// ```
-/// use kychacha_crypto::encrypt_with_key;
-///
-/// // do not use this on your code, instead use encrypt fn
-/// let key = [0u8; 32];
-/// let (nonce, encrypted) = encrypt_with_key(&key, b"message").unwrap();
-/// ```
-///
-/// # Errors
-/// - key ≠ 32 bytes
-/// - Error while encrypting
-pub fn encrypt_with_key(key: &[u8; 32], plaintext: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
-    let mut cipher = ChaCha20Poly1305::new_from_slice(key)
+pub(crate) fn encrypt_with_key_stream<R: Read, W: Write> (
+    key: &[u8; 32],
+    reader: &mut R,
+    writer: &mut W,
+) -> Result<()> {
+    let cipher = ChaCha20Poly1305::new_from_slice(key)
         .context("Invalid key length")?;
 
     let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
-    let mut buffer = plaintext.to_vec();
 
-    cipher
-        .encrypt_in_place(&nonce, b"", &mut buffer)
-        .map_err(|e| anyhow!("Encryption failed: {}", e))?;
+    writer
+        .write_all(&nonce)
+        .context("Error writing nonce")?;
 
-    Ok((nonce.to_vec(), buffer))
+    let mut buf = [0u8; 4096]; // 4KB Buffer
+
+    while let Ok(n) = reader.read(&mut buf) {
+        if n == 0 { break; }
+        let ct_chunk = cipher
+            .encrypt(&nonce, Payload::from(&buf[..n]))
+            .map_err(|e| anyhow::anyhow!("Error while encrypting the chunk: {}", e))?;
+        let len = ct_chunk.len() as u64;
+        writer
+            .write_all(&len.to_le_bytes())
+            .context("Error while writing len")?;
+        writer
+            .write_all(&ct_chunk)
+            .context("Error while writing chunk")?;
+    }
+    Ok(())
 }
 
-/// Decrypt a message with ChaCha20Poly1305.
-///
-/// # Example
-/// ```
-/// use kychacha_crypto::{decrypt_with_key, encrypt_with_key};
-///
-/// let key = [0u8; 32];
-/// // do not use this on your code, instead use encrypt fn
-/// let (nonce, encrypted) = encrypt_with_key(&key, b"message").unwrap();
-/// // do not use this on your code, instead use decrypt fn
-/// let decrypted_text = decrypt_with_key(&key, &nonce, &encrypted).unwrap();
-/// ```
-///
-/// # Errors
-/// - Key ≠ 32 bytes or nonce ≠ 12 bytes
-/// - Failed auth or corruption on the data
-pub fn decrypt_with_key(key: &[u8; 32], nonce: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+pub(crate) fn decrypt_with_key_stream<R: Read, W: Write>(key: &[u8; 32], nonce: &[u8], mut reader: IoRWrapper<R>, mut writer: W) -> Result<()> {
     let mut cipher = ChaCha20Poly1305::new_from_slice(key).context("Invalid key length")?;
 
     let nonce = Nonce::from_slice(nonce);
-    let mut buffer = ciphertext.to_vec();
+    loop {
+        let mut len_bytes = [0u8; 8];
+        match reader.0.read_exact(&mut len_bytes) {
+            Ok(()) => (),
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => return Err(e).context("Failed to read chunk length"),
+        }
 
-    cipher
-        .decrypt_in_place(nonce, b"", &mut buffer)
-        .map_err(|e| anyhow!("Decryption failed: {}", e))?;
+        let len = u64::from_le_bytes(len_bytes) as usize;
+        let mut ct_chunk = vec![0u8; len];
+        reader.0.read_exact(&mut ct_chunk)?;
 
-    Ok(buffer)
+        cipher
+            .decrypt_in_place(nonce, b"", &mut ct_chunk)
+            .map_err(|e| anyhow!("Decryption failed: {}", e))?;
+
+        writer.write_all(&ct_chunk)?;
+    }
+
+
+    Ok(())
 }

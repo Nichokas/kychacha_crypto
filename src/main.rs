@@ -1,9 +1,19 @@
 // main.rs - Script to generate tests.bin
 use anyhow::Result;
 use bincode::serde::encode_to_vec;
-use kychacha_crypto::{encrypt, generate_keypair, public_key_to_bytes, secret_key_to_bytes, TestData};
+use kychacha_crypto::{encrypt_stream, generate_keypair, public_key_to_bytes, secret_key_to_bytes};
+use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write, Cursor};
+
+#[derive(Serialize, Deserialize)]
+struct TestData {
+    #[serde(with = "serde_bytes")]
+    pub secret_key: Vec<u8>,
+    #[serde(with = "serde_bytes")]
+    pub public_key: Vec<u8>,
+    pub encrypted_data: Vec<u8>,
+}
 
 fn main() -> Result<()> {
     // Generate a new keypair
@@ -12,9 +22,10 @@ fn main() -> Result<()> {
     // Test message that matches the expected one in test_known_vector
     let message = "Testing... 1234; quantum??? :3";
     
-    // Encrypt the message
-    let encrypted_data = encrypt(keypair.public_key.clone(), message.as_bytes())?;
-    
+    // Encrypt the message using the streaming API
+    let mut encrypted_data = Vec::new();
+    encrypt_stream(keypair.public_key.clone(), &mut Cursor::new(message.as_bytes()), &mut encrypted_data)?;
+
     // Create the TestData structure
     let test_data = TestData {
         secret_key: secret_key_to_bytes(keypair.private_key),
