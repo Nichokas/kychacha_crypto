@@ -83,7 +83,7 @@ fn test_big_round_trip() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    assert_eq!(comp, true);
+    assert!(comp);
     Ok(())
 }
 
