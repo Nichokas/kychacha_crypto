@@ -288,7 +288,7 @@ pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R
     let mut nonce_bytes = [0u8; 12];
     wreader.0.read_exact(&mut nonce_bytes)?;
 
-    decrypt_with_key_stream(&chacha_key,&nonce_bytes,wreader,writer)?;
+    decrypt_with_key_stream(&chacha_key, &nonce_bytes, wreader, writer)?;
 
     Ok(())
 }
