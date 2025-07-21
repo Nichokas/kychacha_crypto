@@ -281,7 +281,7 @@ pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R
         .ok_or_else(|| anyhow::anyhow!("Error while retreating the ciphertext from bytes"))?;
 
     let ss = kem
-        .decapsulate(private_key,&ct)
+        .decapsulate(private_key, &ct)
         .map_err(|e| anyhow::anyhow!("Error decapsulando KEM: {}", e))?;
     let chacha_key = derive_chacha_key(ss)?;
 
