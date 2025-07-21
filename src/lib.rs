@@ -10,7 +10,6 @@
 //! # A Simple Example
 //! ```
 //! use std::error::Error;
-//! use bincode::de::read::SliceReader;
 //! use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
 //! use std::io::Cursor;
 //!
@@ -25,11 +24,11 @@
 //!     // encrypt the text to bob
 //!     encrypt_stream(bob_keypair.public_key, &mut Cursor::new(b"Hi bob! :D"), &mut sink)?;
 //!
-//!     let mut ciphertext_bytes = Vec::new();
+//!     let mut decrypted_bytes = Vec::new();
 //!
-//!     decrypt_stream(&bob_keypair.private_key, &mut Cursor::new(sink), &mut ciphertext_bytes)?;
+//!     decrypt_stream(&bob_keypair.private_key, &mut Cursor::new(sink), &mut decrypted_bytes)?;
 //!
-//!     assert_eq!(String::from_utf8_lossy(&ciphertext_bytes), "Hi bob! :D".to_string());
+//!     assert_eq!(String::from_utf8_lossy(&decrypted_bytes), "Hi bob! :D");
 //!     Ok(())
 //! }
 //! ```
@@ -187,16 +186,8 @@ impl<R: Read> Reader for IoRWrapper<R> {
 /// # use std::error::Error;
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use std::fs::File;
-/// use std::io::{Cursor, Write, BufReader};
-///
-/// use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
-///
-/// // Create file that we want to encrypt
-/// let mut file = File::create("plaintext.bin")?;
-/// file.write_all(b"hello world")?;
-///
-/// // read the file with the plaintext
-/// let mut reader = BufReader::new(file);
+/// use std::io::{Cursor, Write};
+/// use kychacha_crypto::{encrypt_stream, generate_keypair};
 ///
 /// // Generate keypair
 /// let keypair = generate_keypair()?;
@@ -207,7 +198,7 @@ impl<R: Read> Reader for IoRWrapper<R> {
 /// // Encrypt data
 /// encrypt_stream(keypair.public_key, &mut Cursor::new(b"file content example"), &mut file)?;
 ///
-/// // Now the encrypted.bin that we created is filled with the encrypted data of plaintext.bin
+/// // Now the encrypted.bin file contains the encrypted data
 /// # Ok(())
 /// # }
 /// ```
@@ -244,26 +235,21 @@ pub fn encrypt_stream<R: Read, W: Write>(
 /// # use std::error::Error;
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use std::fs::File;
-/// use std::io::{Cursor, Write, BufReader};
+/// use std::io::Cursor;
 /// use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
-///
-/// // Create file that we want to encrypt
-/// let mut file = File::create("plaintext.bin")?;
-/// file.write_all(b"hello world")?;
-///
-/// // read the file with the plaintext
-/// let mut reader = BufReader::new(file);
 ///
 /// // Generate keypair
 /// let keypair = generate_keypair()?;
 ///
-/// // Create file and get writer
-/// let mut file = File::create("encrypted.bin")?;
+/// // First, create some encrypted data
+/// let mut encrypted_data = Vec::new();
+/// encrypt_stream(keypair.public_key, &mut Cursor::new(b"hello world"), &mut encrypted_data)?;
 ///
-/// // Encrypt data
-/// encrypt_stream(keypair.public_key, &mut Cursor::new(b"file content example"), &mut file)?;
+/// // Now decrypt it
+/// let mut decrypted_data = Vec::new();
+/// decrypt_stream(&keypair.private_key, &mut Cursor::new(encrypted_data), &mut decrypted_data)?;
 ///
-/// // Now the encrypted.bin that we created is filled with the encrypted data of plaintext.bin
+/// assert_eq!(String::from_utf8_lossy(&decrypted_data), "hello world");
 /// # Ok(())
 /// # }
 /// ```
