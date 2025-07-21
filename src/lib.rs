@@ -188,7 +188,7 @@ impl<R: Read> Reader for IoRWrapper<R> {
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use std::fs::File;
 /// use std::io::{Cursor, Write, BufReader};
-/// use std::io::{};
+///
 /// use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
 ///
 /// // Create file that we want to encrypt
