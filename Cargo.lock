@@ -690,6 +690,7 @@ dependencies = [
  "cstr_core",
  "libc",
  "oqs-sys",
+ "serde",
 ]
 
 [[package]]

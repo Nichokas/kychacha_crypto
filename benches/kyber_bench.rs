@@ -40,7 +40,7 @@ fn encapsulation_benchmark(c: &mut Criterion) {
     c.bench_function("mlkem_encapsulation", |b| {
         b.iter(|| {
             let kem = initialize();
-            let (_ct, _ss) = black_box(kem.encapsulate(&server_kp.public_key)).unwrap();
+            let (_ct, _ss) = black_box(kem.encapsulate(&server_kp.public_key.key)).unwrap();
         });
     });
 }
@@ -48,11 +48,11 @@ fn encapsulation_benchmark(c: &mut Criterion) {
 fn decapsulation_benchmark(c: &mut Criterion) {
     let kem = initialize();
     let server_kp = generate_keypair().unwrap();
-    let (ct, _) = kem.encapsulate(&server_kp.public_key).unwrap();
+    let (ct, _) = kem.encapsulate(&server_kp.public_key.key).unwrap();
 
     c.bench_function("mlkem_decapsulation", |b| {
         b.iter(|| {
-            black_box(kem.decapsulate(&server_kp.private_key, &ct).unwrap());
+            black_box(kem.decapsulate(&server_kp.private_key.key, &ct).unwrap());
         });
     });
 }

@@ -4,7 +4,7 @@ use hkdf::Hkdf;
 use sha2::Sha256;
 use oqs;
 use oqs::kem::SharedSecret;
-use crate::{MlKemKeyPair,select_oqs};
+use crate::{MlKemKeyPair, given_oqs, PublicKey, SecretKey};
 use anyhow::Result;
 
 /// Derives 256-bit ChaCha20 key from Kyber shared secret
@@ -40,11 +40,11 @@ pub(crate) fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]>
 /// # Errors
 /// Returns error if keypair generation fails
 pub fn generate_keypair() -> Result<MlKemKeyPair> {
-    let kem = select_oqs()?;
-    let (public_key, private_key) = kem.keypair()
+    let (sec,kem) = given_oqs()?;
+    let (gpublic_key, gprivate_key) = kem.keypair()
         .map_err(|e| anyhow::anyhow!("Failed to generate ML-KEM keypair: {}", e))?;
     Ok(MlKemKeyPair {
-        public_key,
-        private_key,
+        public_key: PublicKey {security:sec.clone(),key:gpublic_key},
+        private_key: SecretKey {security:sec,key:gprivate_key},
     })
 }
