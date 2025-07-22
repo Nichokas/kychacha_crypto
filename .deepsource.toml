@@ -1,15 +1,15 @@
 version = 1
 
 test_patterns = [
-  "**/test.rs",
+  "**/tests.rs",
   "**/main.rs"
 ]
 
 [[analyzers]]
 name = "rust"
 
-[analyzers.meta]
-msrv = "stable"
+  [analyzers.meta]
+  msrv = "stable"
 
 [[transformers]]
 name = "rustfmt"
