@@ -1,7 +1,7 @@
 [package]
 name = "kychacha_crypto"
 description = "A Post-Quantum Secure Encryption Protocol using chacha20poly1305 and CRYSTALS-kyber"
-version = "5.0.0"
+version = "5.0.1"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/Nichokas/kychacha_crypto"
@@ -19,10 +19,14 @@ exclude = [
 ]
 
 [features]
-default = ["mlkem768"]
+default = ["mlkem768","recommended-buffer"]
 mlkem512 = []
 mlkem768 = []
 mlkem1024 = []
+small-buffer = []
+recommended-buffer = []
+large-buffer = []
+medium-buffer = []
 
 [dependencies]
 anyhow = "1.0.98"

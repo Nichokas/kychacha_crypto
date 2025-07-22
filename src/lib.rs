@@ -6,11 +6,13 @@
 //! |mlkem512|x|Select Ml-Kem security level to 512 (private key size)|
 //! |mlkem768|✅|Select Ml-Kem security level to 768 (private key size)|
 //! |mlkem1024|x|Select Ml-Kem security level to 1024 (private key size)|
-//!
+//! |small-buffer|x|Use a 4 KB buffer for encryption and decryption (files < 1 MB), for environments with very restricted amount of ram|
+//! |recommended-buffer|✅|Use a 64 KB buffer for encryption and decryption (files < 100 MB), recommended value for most use cases.|
+//! |medium-buffer|✅|Use a 8 MB buffer for encryption and decryption (files 100 MB–5 GB), recommended for large files: logs, CSV/JSON, et cetera.|
+//! |large-buffer|x|Use a 1GB buffer for encryption and decryption (files > 5 GB), recommended for extremely large files like backups and 4K/8K video without compression.|
 //! # A Simple Example
 //! ```
 //! use std::error::Error;
-//! use bincode::de::read::SliceReader;
 //! use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
 //! use std::io::Cursor;
 //!
@@ -25,11 +27,11 @@
 //!     // encrypt the text to bob
 //!     encrypt_stream(bob_keypair.public_key, &mut Cursor::new(b"Hi bob! :D"), &mut sink)?;
 //!
-//!     let mut ciphertext_bytes = Vec::new();
+//!     let mut decrypted_bytes = Vec::new();
 //!
-//!     decrypt_stream(&bob_keypair.private_key, &mut Cursor::new(sink), &mut ciphertext_bytes)?;
+//!     decrypt_stream(&bob_keypair.private_key, &mut Cursor::new(sink), &mut decrypted_bytes)?;
 //!
-//!     assert_eq!(String::from_utf8_lossy(&ciphertext_bytes), "Hi bob! :D".to_string());
+//!     assert_eq!(String::from_utf8_lossy(&decrypted_bytes), "Hi bob! :D");
 //!     Ok(())
 //! }
 //! ```
@@ -52,6 +54,15 @@ use oqs::kem;
 use oqs::kem::{PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
+
+#[cfg(feature = "small-buffer")]
+pub(crate) const BUFFER_SIZE: usize = 4 * 1024;
+#[cfg(feature = "recommended-buffer")]
+pub(crate) const BUFFER_SIZE: usize = 64 * 1024;
+#[cfg(feature = "medium-buffer")]
+pub(crate) const BUFFER_SIZE: usize = 8 * 1024 * 1024;
+#[cfg(feature = "large-buffer")]
+pub(crate) const BUFFER_SIZE: usize = 1 * 1024 * 1024 * 1024;
 
 #[derive(Clone,Eq, PartialEq)]
 pub struct MlKemKeyPair {
@@ -187,16 +198,8 @@ impl<R: Read> Reader for IoRWrapper<R> {
 /// # use std::error::Error;
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use std::fs::File;
-/// use std::io::{Cursor, Write, BufReader};
-///
-/// use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
-///
-/// // Create file that we want to encrypt
-/// let mut file = File::create("plaintext.bin")?;
-/// file.write_all(b"hello world")?;
-///
-/// // read the file with the plaintext
-/// let mut reader = BufReader::new(file);
+/// use std::io::{Cursor, Write};
+/// use kychacha_crypto::{encrypt_stream, generate_keypair};
 ///
 /// // Generate keypair
 /// let keypair = generate_keypair()?;
@@ -207,7 +210,7 @@ impl<R: Read> Reader for IoRWrapper<R> {
 /// // Encrypt data
 /// encrypt_stream(keypair.public_key, &mut Cursor::new(b"file content example"), &mut file)?;
 ///
-/// // Now the encrypted.bin that we created is filled with the encrypted data of plaintext.bin
+/// // Now the encrypted.bin file contains the encrypted data
 /// # Ok(())
 /// # }
 /// ```
@@ -244,26 +247,21 @@ pub fn encrypt_stream<R: Read, W: Write>(
 /// # use std::error::Error;
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// use std::fs::File;
-/// use std::io::{Cursor, Write, BufReader};
+/// use std::io::Cursor;
 /// use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
-///
-/// // Create file that we want to encrypt
-/// let mut file = File::create("plaintext.bin")?;
-/// file.write_all(b"hello world")?;
-///
-/// // read the file with the plaintext
-/// let mut reader = BufReader::new(file);
 ///
 /// // Generate keypair
 /// let keypair = generate_keypair()?;
 ///
-/// // Create file and get writer
-/// let mut file = File::create("encrypted.bin")?;
+/// // First, create some encrypted data
+/// let mut encrypted_data = Vec::new();
+/// encrypt_stream(keypair.public_key, &mut Cursor::new(b"hello world"), &mut encrypted_data)?;
 ///
-/// // Encrypt data
-/// encrypt_stream(keypair.public_key, &mut Cursor::new(b"file content example"), &mut file)?;
+/// // Now decrypt it
+/// let mut decrypted_data = Vec::new();
+/// decrypt_stream(&keypair.private_key, &mut Cursor::new(encrypted_data), &mut decrypted_data)?;
 ///
-/// // Now the encrypted.bin that we created is filled with the encrypted data of plaintext.bin
+/// assert_eq!(String::from_utf8_lossy(&decrypted_data), "hello world");
 /// # Ok(())
 /// # }
 /// ```

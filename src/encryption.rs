@@ -8,6 +8,7 @@ use chacha20poly1305::{
 };
 use chacha20poly1305::aead::{Aead, Payload};
 use crate::IoRWrapper;
+use crate::BUFFER_SIZE;
 
 pub(crate) fn encrypt_with_key_stream<R: Read, W: Write> (
     key: &[u8; 32],
@@ -23,7 +24,7 @@ pub(crate) fn encrypt_with_key_stream<R: Read, W: Write> (
         .write_all(&nonce)
         .context("Error writing nonce")?;
 
-    let mut buf = [0u8; 4096]; // 4KB Buffer
+    let mut buf = [0u8; BUFFER_SIZE];
 
     while let Ok(n) = reader.read(&mut buf) {
         if n == 0 { break; }
