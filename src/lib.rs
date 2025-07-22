@@ -242,6 +242,7 @@ pub fn decrypt_stream<R: Read, W: Write>(
     writer: &mut W,
 ) -> Result<()> {
     let kem = select_oqs(&private_key.security)?;
+
     let mut wreader = IoRWrapper(reader);
 
     let config = match select_bincode_config() {
