@@ -41,19 +41,22 @@ mod encryption;
 mod key_exchange;
 #[cfg(test)]
 mod tests;
+mod types;
 
 use anyhow::{Result};
 use bincode::config::Config;
 use bincode::de::read::Reader;
 use bincode::enc::write::Writer;
 use bincode::encode_into_writer;
-pub use encryption::*;
-pub use key_exchange::*;
+use encryption::*;
+pub use types::*;
+use key_exchange::derive_chacha_key;
+pub use key_exchange::generate_keypair;
 use oqs;
 use oqs::kem;
-use oqs::kem::{PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
+use oqs::kem::{PublicKey as libPublicKey, SecretKey as libSecretKey};
 
 #[cfg(feature = "small-buffer")]
 pub(crate) const BUFFER_SIZE: usize = 4 * 1024;
@@ -63,12 +66,6 @@ pub(crate) const BUFFER_SIZE: usize = 64 * 1024;
 pub(crate) const BUFFER_SIZE: usize = 8 * 1024 * 1024;
 #[cfg(feature = "large-buffer")]
 pub(crate) const BUFFER_SIZE: usize = 1 * 1024 * 1024 * 1024;
-
-#[derive(Clone,Eq, PartialEq)]
-pub struct MlKemKeyPair {
-    pub private_key: SecretKey,
-    pub public_key: PublicKey,
-}
 
 /// (only for tests)
 #[derive(Serialize, Deserialize)]
@@ -93,7 +90,7 @@ pub(crate) struct TestData {
 /// Ok(())
 /// # }
 /// ```
-pub fn secret_key_to_bytes(sk: SecretKey) -> Vec<u8> {
+pub(crate) fn secret_key_to_bytes(sk: libSecretKey) -> Vec<u8> {
     sk.into_vec()
 }
 
@@ -110,7 +107,7 @@ pub fn secret_key_to_bytes(sk: SecretKey) -> Vec<u8> {
 /// Ok(())
 /// # }
 /// ```
-pub fn public_key_to_bytes(pk: PublicKey) -> Vec<u8> {
+pub(crate) fn public_key_to_bytes(pk: libPublicKey) -> Vec<u8> {
     pk.into_vec()
 }
 
@@ -118,8 +115,8 @@ pub fn public_key_to_bytes(pk: PublicKey) -> Vec<u8> {
 ///
 /// # Errors
 /// Returns error if the byte array is invalid or key reconstruction fails
-pub fn bytes_to_secret_key(bytes: &Vec<u8>) -> Result<SecretKey> {
-    let kem = select_oqs()?;
+pub(crate) fn bytes_to_secret_key(bytes: &Vec<u8>) -> Result<libSecretKey> {
+    let kem = given_oqs()?;
     kem.secret_key_from_bytes(bytes)
         .ok_or_else(|| anyhow::anyhow!("Failed to reconstruct secret key from bytes"))
         .map(|sk| sk.to_owned())
@@ -129,14 +126,14 @@ pub fn bytes_to_secret_key(bytes: &Vec<u8>) -> Result<SecretKey> {
 ///
 /// # Errors
 /// Returns error if the byte array is invalid or key reconstruction fails
-pub fn bytes_to_public_key(bytes: &Vec<u8>) -> Result<PublicKey> {
-    let kem = select_oqs()?;
+pub(crate) fn bytes_to_public_key(bytes: &Vec<u8>) -> Result<libPublicKey> {
+    let kem = given_oqs()?;
     kem.public_key_from_bytes(bytes)
         .ok_or_else(|| anyhow::anyhow!("Failed to reconstruct public key from bytes"))
         .map(|pk| pk.to_owned())
 }
 
-fn select_oqs() -> Result<kem::Kem> {
+pub(crate) fn given_oqs() -> Result<kem::Kem> {
     oqs::init();
 
     #[cfg(feature = "mlkem512")]
@@ -159,6 +156,26 @@ fn select_oqs() -> Result<kem::Kem> {
 
     // Default fallback if no feature is enabled
     anyhow::bail!("No ML-KEM algorithm feature selected")
+}
+
+pub(crate) fn select_oqs(sec: types::SecurityLevel) -> Result<kem::Kem> {
+    oqs::init();
+    if sec == types::SecurityLevel::MlKem512 {
+        return kem::Kem::new(kem::Algorithm::MlKem512)
+            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-512: {}", e));
+    }
+
+    if sec == types::SecurityLevel::MlKem768 {
+        return kem::Kem::new(kem::Algorithm::MlKem768)
+            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-768: {}", e));
+    }
+
+    if sec == types::SecurityLevel::MlKem1024 {
+        return kem::Kem::new(kem::Algorithm::MlKem1024)
+            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-1024: {}", e));
+    }
+
+    anyhow::bail!("No ML-KEM with the specified security level found.");
 }
 
 fn select_bincode_config() -> Result<impl Config> {
@@ -219,7 +236,7 @@ pub fn encrypt_stream<R: Read, W: Write>(
     reader: &mut R,
     io_writer: &mut W,
 ) -> Result<()> {
-    let kem = select_oqs()?;
+    let kem = given_oqs()?;
 
     let (ct, ss) = kem.encapsulate(&server_pubkey)
         .map_err(|e| anyhow::anyhow!("Failed to encapsulate with public key: {}", e))?;
@@ -266,7 +283,7 @@ pub fn encrypt_stream<R: Read, W: Write>(
 /// # }
 /// ```
 pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R, writer: &mut W) -> Result<()> {
-    let kem = select_oqs()?;
+    let kem = given_oqs()?;
     let mut wreader = IoRWrapper(reader);
 
     let config = match select_bincode_config() {
