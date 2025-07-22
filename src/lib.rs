@@ -77,25 +77,34 @@ pub(crate) struct TestData {
     pub encrypted_data: Vec<u8>,
 }
 
-pub(crate) fn given_oqs() -> Result<(SecurityLevel,kem::Kem)> {
+pub(crate) fn given_oqs() -> Result<(SecurityLevel, kem::Kem)> {
     oqs::init();
 
     #[cfg(feature = "mlkem512")]
     {
-        return Ok((SecurityLevel::MlKem512,kem::Kem::new(kem::Algorithm::MlKem512)
-            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-512: {}", e))?));
+        return Ok((
+            SecurityLevel::MlKem512,
+            kem::Kem::new(kem::Algorithm::MlKem512)
+                .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-512: {}", e))?,
+        ));
     }
 
     #[cfg(feature = "mlkem768")]
     {
-        return Ok((SecurityLevel::MlKem768,kem::Kem::new(kem::Algorithm::MlKem768)
-            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-768: {}", e))?));
+        return Ok((
+            SecurityLevel::MlKem768,
+            kem::Kem::new(kem::Algorithm::MlKem768)
+                .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-768: {}", e))?,
+        ));
     }
 
     #[cfg(feature = "mlkem1024")]
     {
-        return Ok((SecurityLevel::MlKem1024,kem::Kem::new(kem::Algorithm::MlKem1024)
-            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-1024: {}", e))?));
+        return Ok((
+            SecurityLevel::MlKem1024,
+            kem::Kem::new(kem::Algorithm::MlKem1024)
+                .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-1024: {}", e))?,
+        ));
     }
 
     // Default fallback if no feature is enabled
@@ -123,11 +132,9 @@ pub(crate) fn select_oqs(sec: &SecurityLevel) -> Result<kem::Kem> {
 }
 
 fn select_bincode_config() -> Result<impl Config> {
-    Ok(
-        bincode::config::standard()
-            .with_big_endian()
-            .with_variable_int_encoding(),
-    )
+    Ok(bincode::config::standard()
+        .with_big_endian()
+        .with_variable_int_encoding())
 }
 
 struct IoWWrapper<W: Write>(pub W);
@@ -182,14 +189,17 @@ pub fn encrypt_stream<R: Read, W: Write>(
 ) -> Result<()> {
     let kem = select_oqs(&server_pubkey.security)?;
 
-    let (ct, ss) = kem.encapsulate(&server_pubkey.key)
+    let (ct, ss) = kem
+        .encapsulate(&server_pubkey.key)
         .map_err(|e| anyhow::anyhow!("Failed to encapsulate with public key: {}", e))?;
 
     let chacha_key = derive_chacha_key(ss)?;
 
     let config = match select_bincode_config() {
         Ok(config) => config,
-        Err(_) => anyhow::bail!("The bincode (kychacha_crypto crate) configuration feature flag is not properly configured.")
+        Err(_) => anyhow::bail!(
+            "The bincode (kychacha_crypto crate) configuration feature flag is not properly configured."
+        ),
     };
 
     let mut writer = IoWWrapper(io_writer);
@@ -226,17 +236,24 @@ pub fn encrypt_stream<R: Read, W: Write>(
 /// # Ok(())
 /// # }
 /// ```
-pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R, writer: &mut W) -> Result<()> {
+pub fn decrypt_stream<R: Read, W: Write>(
+    private_key: &SecretKey,
+    reader: &mut R,
+    writer: &mut W,
+) -> Result<()> {
     let kem = select_oqs(&private_key.security)?;
     let mut wreader = IoRWrapper(reader);
 
     let config = match select_bincode_config() {
         Ok(config) => config,
-        Err(_) => anyhow::bail!("The bincode (kychacha_crypto crate) configuration feature flag is not properly configured.")
+        Err(_) => anyhow::bail!(
+            "The bincode (kychacha_crypto crate) configuration feature flag is not properly configured."
+        ),
     };
 
     let ct_bytes: Vec<u8> = bincode::decode_from_reader(&mut wreader, config)?;
-    let ct = kem.ciphertext_from_bytes(&ct_bytes)
+    let ct = kem
+        .ciphertext_from_bytes(&ct_bytes)
         .ok_or_else(|| anyhow::anyhow!("Error while retreating the ciphertext from bytes"))?;
 
     let ss = kem
@@ -264,7 +281,11 @@ pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R
 )]
 pub fn decrypt(encrypted_data: &[u8], private_key: &SecretKey) -> Result<String> {
     let mut buf = Vec::new();
-    decrypt_stream(private_key, &mut std::io::Cursor::new(encrypted_data), &mut buf)?;
+    decrypt_stream(
+        private_key,
+        &mut std::io::Cursor::new(encrypted_data),
+        &mut buf,
+    )?;
     Ok(String::from_utf8_lossy(&buf).into())
 }
 
