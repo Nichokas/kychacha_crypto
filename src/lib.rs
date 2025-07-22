@@ -6,7 +6,10 @@
 //! |mlkem512|x|Select Ml-Kem security level to 512 (private key size)|
 //! |mlkem768|✅|Select Ml-Kem security level to 768 (private key size)|
 //! |mlkem1024|x|Select Ml-Kem security level to 1024 (private key size)|
-//!
+//! |small-buffer|x|Use a 4 KB buffer for encryption and decryption (files < 1 MB), for environments with very restricted amount of ram|
+//! |recomended-buffer|✅|Use a 64 KB buffer for encryption and decryption (files < 100 MB), recommended value for most use cases.|
+//! |medium-buffer|✅|Use a 8 MB buffer for encryption and decryption (files 100 MB–5 GB), recommended for large files: logs, CSV/JSON, et cetera.|
+//! |large-buffer|x|Use a 1GB buffer for encryption and decryption (files > 5 GB), recommended for extremely large files like backups and 4K/8K video without compression.|
 //! # A Simple Example
 //! ```
 //! use std::error::Error;
@@ -51,6 +54,15 @@ use oqs::kem;
 use oqs::kem::{PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
+
+#[cfg(feature = "small-buffer")]
+pub(crate) const BUFFER_SIZE: usize = 4 * 1024;
+#[cfg(feature = "recomended-buffer")]
+pub(crate) const BUFFER_SIZE: usize = 64 * 1024;
+#[cfg(feature = "medium-buffer")]
+pub(crate) const BUFFER_SIZE: usize    = 8 * 1024 * 1024;
+#[cfg(feature = "large-buffer")]
+pub(crate) const BUFFER_SIZE: usize = 1 * 1024 * 1024 * 1024;
 
 #[derive(Clone,Eq, PartialEq)]
 pub struct MlKemKeyPair {

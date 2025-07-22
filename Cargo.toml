@@ -19,10 +19,14 @@ exclude = [
 ]
 
 [features]
-default = ["mlkem768"]
+default = ["mlkem768","recomended-buffer"]
 mlkem512 = []
 mlkem768 = []
 mlkem1024 = []
+small-buffer = []
+recomended-buffer = []
+large-buffer = []
+medium-buffer = []
 
 [dependencies]
 anyhow = "1.0.98"
