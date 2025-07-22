@@ -1,23 +1,29 @@
 // tests/test.rs
-use crate::{
-    encrypt_stream, generate_keypair, decrypt_stream, encrypt, decrypt,
-};
+use crate::{decrypt, decrypt_stream, encrypt, encrypt_stream, generate_keypair};
 use anyhow::{Context, Result};
 use bincode::decode_from_slice;
-use std::fs::File;
-use std::io::{BufReader, Cursor, Read, Write};
-use std::error::Error;
 use chacha20poly1305::aead::OsRng;
 use chacha20poly1305::aead::rand_core::RngCore;
+use std::error::Error;
+use std::fs::File;
+use std::io::{BufReader, Cursor, Read, Write};
 use tempfile::tempfile;
 
 #[test]
 fn test_round_trip() -> Result<(), Box<dyn Error>> {
     let keypair = generate_keypair()?;
     let mut sink = Vec::new();
-    encrypt_stream(keypair.public_key, &mut Cursor::new(b"secret message"), &mut sink)?;
+    encrypt_stream(
+        keypair.public_key,
+        &mut Cursor::new(b"secret message"),
+        &mut sink,
+    )?;
     let mut ciphertext_bytes = Vec::new();
-    decrypt_stream(&keypair.private_key, &mut Cursor::new(sink), &mut ciphertext_bytes)?;
+    decrypt_stream(
+        &keypair.private_key,
+        &mut Cursor::new(sink),
+        &mut ciphertext_bytes,
+    )?;
     assert_eq!(String::from_utf8_lossy(&ciphertext_bytes), "secret message");
     Ok(())
 }
@@ -50,7 +56,11 @@ fn test_big_round_trip() -> Result<(), Box<dyn Error>> {
     encrypted_file.seek(std::io::SeekFrom::Start(0))?;
 
     let mut decrypted_file = tempfile()?;
-    decrypt_stream(&keypair.private_key, &mut encrypted_file, &mut decrypted_file)?;
+    decrypt_stream(
+        &keypair.private_key,
+        &mut encrypted_file,
+        &mut decrypted_file,
+    )?;
 
     // Reset both files to beginning for comparison
     file.seek(std::io::SeekFrom::Start(0))?;
@@ -96,12 +106,16 @@ fn legacy_functions() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
 #[test]
 fn test_tampered_ciphertext() {
     let server_kp = generate_keypair().unwrap();
     let mut encrypted = Vec::new();
-    encrypt_stream(server_kp.public_key, &mut Cursor::new("test".as_bytes()), &mut encrypted).unwrap();
+    encrypt_stream(
+        server_kp.public_key,
+        &mut Cursor::new("test".as_bytes()),
+        &mut encrypted,
+    )
+    .unwrap();
 
     let mut corrupted = encrypted.clone();
     if corrupted.len() > 10 {
@@ -109,7 +123,11 @@ fn test_tampered_ciphertext() {
     }
 
     let mut output = Vec::new();
-    let result = decrypt_stream(&server_kp.private_key, &mut Cursor::new(corrupted), &mut output);
+    let result = decrypt_stream(
+        &server_kp.private_key,
+        &mut Cursor::new(corrupted),
+        &mut output,
+    );
     assert!(result.is_err());
 }
 
@@ -117,7 +135,12 @@ fn test_tampered_ciphertext() {
 fn test_tampered_nonce() {
     let server_kp = generate_keypair().unwrap();
     let mut encrypted = Vec::new();
-    encrypt_stream(server_kp.public_key, &mut Cursor::new("test".as_bytes()), &mut encrypted).unwrap();
+    encrypt_stream(
+        server_kp.public_key,
+        &mut Cursor::new("test".as_bytes()),
+        &mut encrypted,
+    )
+    .unwrap();
 
     // Find and corrupt the nonce (12 bytes after the KEM ciphertext)
     // The nonce comes after the bincode-encoded KEM ciphertext
@@ -129,7 +152,11 @@ fn test_tampered_nonce() {
     }
 
     let mut output = Vec::new();
-    let result = decrypt_stream(&server_kp.private_key, &mut Cursor::new(corrupted), &mut output);
+    let result = decrypt_stream(
+        &server_kp.private_key,
+        &mut Cursor::new(corrupted),
+        &mut output,
+    );
     assert!(result.is_err());
 }
 
@@ -139,10 +166,18 @@ fn test_empty_message() -> Result<()> {
     let msg = "";
 
     let mut encrypted = Vec::new();
-    encrypt_stream(server_kp.public_key, &mut Cursor::new(msg.as_bytes()), &mut encrypted)?;
+    encrypt_stream(
+        server_kp.public_key,
+        &mut Cursor::new(msg.as_bytes()),
+        &mut encrypted,
+    )?;
 
     let mut decrypted = Vec::new();
-    decrypt_stream(&server_kp.private_key, &mut Cursor::new(encrypted), &mut decrypted)?;
+    decrypt_stream(
+        &server_kp.private_key,
+        &mut Cursor::new(encrypted),
+        &mut decrypted,
+    )?;
 
     assert_eq!(String::from_utf8_lossy(&decrypted), msg);
     Ok(())
@@ -154,10 +189,18 @@ fn test_large_message() -> Result<()> {
     let msg = "A".repeat(10_000);
 
     let mut encrypted = Vec::new();
-    encrypt_stream(server_kp.public_key, &mut Cursor::new(msg.as_bytes()), &mut encrypted)?;
+    encrypt_stream(
+        server_kp.public_key,
+        &mut Cursor::new(msg.as_bytes()),
+        &mut encrypted,
+    )?;
 
     let mut decrypted = Vec::new();
-    decrypt_stream(&server_kp.private_key, &mut Cursor::new(encrypted), &mut decrypted)?;
+    decrypt_stream(
+        &server_kp.private_key,
+        &mut Cursor::new(encrypted),
+        &mut decrypted,
+    )?;
 
     assert_eq!(String::from_utf8_lossy(&decrypted), msg);
     Ok(())
@@ -170,10 +213,19 @@ fn test_wrong_key_decryption() {
     let msg = "Confidential message.";
 
     let mut encrypted = Vec::new();
-    encrypt_stream(server_kp.public_key, &mut Cursor::new(msg.as_bytes()), &mut encrypted).unwrap();
+    encrypt_stream(
+        server_kp.public_key,
+        &mut Cursor::new(msg.as_bytes()),
+        &mut encrypted,
+    )
+    .unwrap();
 
     let mut output = Vec::new();
-    let result = decrypt_stream(&attacker_kp.private_key, &mut Cursor::new(encrypted), &mut output);
+    let result = decrypt_stream(
+        &attacker_kp.private_key,
+        &mut Cursor::new(encrypted),
+        &mut output,
+    );
 
     assert!(result.is_err());
 }
@@ -215,7 +267,11 @@ fn test_known_vector() -> Result<()> {
 fn file_round_trip() -> Result<(), Box<dyn Error>> {
     let keypair = generate_keypair()?;
     let mut encrypted_data = Vec::new();
-    encrypt_stream(keypair.public_key, &mut Cursor::new(b"file content example"), &mut encrypted_data)?;
+    encrypt_stream(
+        keypair.public_key,
+        &mut Cursor::new(b"file content example"),
+        &mut encrypted_data,
+    )?;
 
     {
         let mut file = File::create("encrypted.bin")?;

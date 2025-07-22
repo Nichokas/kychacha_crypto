@@ -1,7 +1,7 @@
 // benches/kyber_bench.rs
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-use oqs::kem;
+use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
+use oqs::kem;
 use std::io::Cursor;
 
 fn initialize() -> kem::Kem {
@@ -71,7 +71,14 @@ fn full_encryption_benchmark(c: &mut Criterion) {
                 || message.clone(),
                 |msg| {
                     let mut output = Vec::new();
-                    black_box(encrypt_stream(server_kp.public_key.clone(), &mut Cursor::new(&msg), &mut output).unwrap());
+                    black_box(
+                        encrypt_stream(
+                            server_kp.public_key.clone(),
+                            &mut Cursor::new(&msg),
+                            &mut output,
+                        )
+                        .unwrap(),
+                    );
                     output
                 },
                 BatchSize::SmallInput,
@@ -85,13 +92,28 @@ fn full_decryption_benchmark(c: &mut Criterion) {
 
     // Pre-encrypt the messages using the streaming API
     let mut short_encrypted = Vec::new();
-    encrypt_stream(server_kp.public_key.clone(), &mut Cursor::new(b"test"), &mut short_encrypted).unwrap();
+    encrypt_stream(
+        server_kp.public_key.clone(),
+        &mut Cursor::new(b"test"),
+        &mut short_encrypted,
+    )
+    .unwrap();
 
     let mut medium_encrypted = Vec::new();
-    encrypt_stream(server_kp.public_key.clone(), &mut Cursor::new(&vec![0u8; 1024]), &mut medium_encrypted).unwrap();
+    encrypt_stream(
+        server_kp.public_key.clone(),
+        &mut Cursor::new(&vec![0u8; 1024]),
+        &mut medium_encrypted,
+    )
+    .unwrap();
 
     let mut long_encrypted = Vec::new();
-    encrypt_stream(server_kp.public_key.clone(), &mut Cursor::new(&vec![0u8; 4096]), &mut long_encrypted).unwrap();
+    encrypt_stream(
+        server_kp.public_key.clone(),
+        &mut Cursor::new(&vec![0u8; 4096]),
+        &mut long_encrypted,
+    )
+    .unwrap();
 
     let messages = vec![
         ("short", short_encrypted),
@@ -105,7 +127,10 @@ fn full_decryption_benchmark(c: &mut Criterion) {
                 || ciphertext.clone(),
                 |ct| {
                     let mut output = Vec::new();
-                    black_box(decrypt_stream(&server_kp.private_key, &mut Cursor::new(ct), &mut output).unwrap());
+                    black_box(
+                        decrypt_stream(&server_kp.private_key, &mut Cursor::new(ct), &mut output)
+                            .unwrap(),
+                    );
                     output
                 },
                 BatchSize::SmallInput,

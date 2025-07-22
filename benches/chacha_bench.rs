@@ -1,8 +1,7 @@
-use chacha20poly1305::aead::rand_core::OsRng as ChaChaOsRng;
 use chacha20poly1305::aead::Aead;
-use chacha20poly1305::{aead::AeadCore, ChaCha20Poly1305, KeyInit};
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-
+use chacha20poly1305::aead::rand_core::OsRng as ChaChaOsRng;
+use chacha20poly1305::{ChaCha20Poly1305, KeyInit, aead::AeadCore};
+use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 
 fn encryption_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("chacha_encryption");

@@ -1,7 +1,7 @@
 #![no_main]
 
-use libfuzzer_sys::fuzz_target;
 use kychacha_crypto::{bytes_to_public_key, public_key_to_bytes};
+use libfuzzer_sys::fuzz_target;
 
 // Bytes <=> Public key
 fuzz_target!(|data: &[u8]| {

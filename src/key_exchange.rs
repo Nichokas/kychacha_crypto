@@ -1,11 +1,11 @@
 //! Kyber-1024 key exchange implementation (NIST PQC Round 3)
 
+use crate::{MlKemKeyPair, select_oqs};
+use anyhow::Result;
 use hkdf::Hkdf;
-use sha2::Sha256;
 use oqs;
 use oqs::kem::SharedSecret;
-use crate::{MlKemKeyPair,select_oqs};
-use anyhow::Result;
+use sha2::Sha256;
 
 /// Derives 256-bit ChaCha20 key from Kyber shared secret
 ///
@@ -41,7 +41,8 @@ pub(crate) fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]>
 /// Returns error if keypair generation fails
 pub fn generate_keypair() -> Result<MlKemKeyPair> {
     let kem = select_oqs()?;
-    let (public_key, private_key) = kem.keypair()
+    let (public_key, private_key) = kem
+        .keypair()
         .map_err(|e| anyhow::anyhow!("Failed to generate ML-KEM keypair: {}", e))?;
     Ok(MlKemKeyPair {
         public_key,
