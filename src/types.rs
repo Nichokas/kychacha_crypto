@@ -4,6 +4,14 @@ use bincode::serde::{encode_to_vec,borrow_decode_from_slice};
 use crate::select_bincode_config;
 use anyhow::Result;
 
+/// SecurityLevel defines the parameter sets (security strengths) supported by the ML-KEM algorithm.
+///
+/// Each variant corresponds to a NIST PQC Round 3 Kyber parameter set.
+///
+/// # Variants
+/// - `MlKem512`: 512-bit security level
+/// - `MlKem768`: 768-bit security level
+/// - `MlKem1024`: 1024-bit security level
 #[repr(u16)]
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum SecurityLevel {
@@ -12,7 +20,26 @@ pub enum SecurityLevel {
     MlKem1024 = 1024,
 }
 
-#[derive(Clone,Eq, PartialEq, Serialize, Deserialize)]
+/// SecretKey holds the private component of an ML-KEM key pair along with its security level.
+///
+/// Provides serialization (`to_vec`) and deserialization (`from_bytes`) helpers.
+///
+/// # Fields
+/// * `security`: The chosen `SecurityLevel`.
+/// * `key`: The underlying OQS secret key.
+///
+/// # Examples
+/// ```
+/// use kychacha_crypto::SecretKey;
+/// use kychacha_crypto::generate_keypair;
+///
+/// let kp = generate_keypair().unwrap();
+/// let sk = kp.private_key;
+/// let bytes = sk.to_vec().unwrap();
+/// let sk2 = SecretKey::from_bytes(&bytes).unwrap();
+/// assert_eq!(sk, sk2);
+/// ```
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SecretKey {
     pub security: SecurityLevel,
     pub key: libSecretKey,
@@ -27,7 +54,26 @@ impl SecretKey {
     }
 }
 
-#[derive(Clone,Eq, PartialEq, Serialize, Deserialize)]
+/// PublicKey holds the public component of an ML-KEM key pair along with its security level.
+///
+/// Provides serialization (`to_vec`) and deserialization (`from_bytes`) helpers.
+///
+/// # Fields
+/// * `security`: The chosen `SecurityLevel`.
+/// * `key`: The underlying OQS public key.
+///
+/// # Examples
+/// ```
+/// use kychacha_crypto::PublicKey;
+/// use kychacha_crypto::generate_keypair;
+///
+/// let kp = generate_keypair().unwrap();
+/// let pk = kp.public_key;
+/// let bytes = pk.to_vec().unwrap();
+/// let pk2 = PublicKey::from_bytes(&bytes).unwrap();
+/// assert_eq!(pk, pk2);
+/// ```
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct PublicKey {
     pub security: SecurityLevel,
     pub key: libPublicKey,
@@ -42,7 +88,25 @@ impl PublicKey {
     }
 }
 
-#[derive(Clone,Eq, PartialEq, Serialize, Deserialize)]
+/// MlKemKeyPair contains both the private and public KEM keys for ML-KEM operations.
+///
+/// Provides serialization (`to_vec`) and deserialization (`from_bytes`) helpers.
+///
+/// # Fields
+/// * `private_key`: The `SecretKey` component.
+/// * `public_key`: The `PublicKey` component.
+///
+/// # Examples
+/// ```
+/// use kychacha_crypto::MlKemKeyPair;
+/// use kychacha_crypto::generate_keypair;
+///
+/// let kp = generate_keypair().unwrap();
+/// let bytes = kp.to_vec().unwrap();
+/// let kp2 = MlKemKeyPair::from_bytes(&bytes).unwrap();
+/// assert_eq!(kp, kp2);
+/// ```
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct MlKemKeyPair {
     pub private_key: SecretKey,
     pub public_key: PublicKey,
