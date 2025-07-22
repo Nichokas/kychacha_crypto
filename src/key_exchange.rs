@@ -43,7 +43,6 @@ pub(crate) fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]>
 pub fn generate_keypair() -> Result<MlKemKeyPair> {
     let (sec, kem) = given_oqs()?;
     let (gpublic_key, gprivate_key) = kem
-
         .keypair()
         .map_err(|e| anyhow::anyhow!("Failed to generate ML-KEM keypair: {}", e))?;
     Ok(MlKemKeyPair {
