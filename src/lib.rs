@@ -42,7 +42,7 @@ mod key_exchange;
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Result};
+use anyhow::Result;
 use bincode::config::Config;
 use bincode::de::read::Reader;
 use bincode::enc::write::Writer;
@@ -64,7 +64,7 @@ pub(crate) const BUFFER_SIZE: usize = 8 * 1024 * 1024;
 #[cfg(feature = "large-buffer")]
 pub(crate) const BUFFER_SIZE: usize = 1 * 1024 * 1024 * 1024;
 
-#[derive(Clone,Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct MlKemKeyPair {
     pub private_key: SecretKey,
     pub public_key: PublicKey,
@@ -162,11 +162,9 @@ fn select_oqs() -> Result<kem::Kem> {
 }
 
 fn select_bincode_config() -> Result<impl Config> {
-    Ok(
-        bincode::config::standard()
-            .with_big_endian()
-            .with_variable_int_encoding(),
-    )
+    Ok(bincode::config::standard()
+        .with_big_endian()
+        .with_variable_int_encoding())
 }
 
 struct IoWWrapper<W: Write>(pub W);
@@ -221,14 +219,17 @@ pub fn encrypt_stream<R: Read, W: Write>(
 ) -> Result<()> {
     let kem = select_oqs()?;
 
-    let (ct, ss) = kem.encapsulate(&server_pubkey)
+    let (ct, ss) = kem
+        .encapsulate(&server_pubkey)
         .map_err(|e| anyhow::anyhow!("Failed to encapsulate with public key: {}", e))?;
 
     let chacha_key = derive_chacha_key(ss)?;
 
     let config = match select_bincode_config() {
         Ok(config) => config,
-        Err(_) => anyhow::bail!("The bincode (kychacha_crypto crate) configuration feature flag is not properly configured.")
+        Err(_) => anyhow::bail!(
+            "The bincode (kychacha_crypto crate) configuration feature flag is not properly configured."
+        ),
     };
 
     let mut writer = IoWWrapper(io_writer);
@@ -265,17 +266,24 @@ pub fn encrypt_stream<R: Read, W: Write>(
 /// # Ok(())
 /// # }
 /// ```
-pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R, writer: &mut W) -> Result<()> {
+pub fn decrypt_stream<R: Read, W: Write>(
+    private_key: &SecretKey,
+    reader: &mut R,
+    writer: &mut W,
+) -> Result<()> {
     let kem = select_oqs()?;
     let mut wreader = IoRWrapper(reader);
 
     let config = match select_bincode_config() {
         Ok(config) => config,
-        Err(_) => anyhow::bail!("The bincode (kychacha_crypto crate) configuration feature flag is not properly configured.")
+        Err(_) => anyhow::bail!(
+            "The bincode (kychacha_crypto crate) configuration feature flag is not properly configured."
+        ),
     };
 
     let ct_bytes: Vec<u8> = bincode::decode_from_reader(&mut wreader, config)?;
-    let ct = kem.ciphertext_from_bytes(&ct_bytes)
+    let ct = kem
+        .ciphertext_from_bytes(&ct_bytes)
         .ok_or_else(|| anyhow::anyhow!("Error while retreating the ciphertext from bytes"))?;
 
     let ss = kem
@@ -303,7 +311,11 @@ pub fn decrypt_stream<R: Read, W: Write>(private_key: &SecretKey, reader: &mut R
 )]
 pub fn decrypt(encrypted_data: &[u8], private_key: &SecretKey) -> Result<String> {
     let mut buf = Vec::new();
-    decrypt_stream(private_key, &mut std::io::Cursor::new(encrypted_data), &mut buf)?;
+    decrypt_stream(
+        private_key,
+        &mut std::io::Cursor::new(encrypted_data),
+        &mut buf,
+    )?;
     Ok(String::from_utf8_lossy(&buf).into())
 }
 

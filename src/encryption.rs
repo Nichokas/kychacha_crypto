@@ -1,33 +1,32 @@
 //! Symmetric cypher using ChaCha20Poly1305 (AEAD).
 
-use std::io::{Read, Write};
-use anyhow::{anyhow, Context, Result};
-use chacha20poly1305::{
-    aead::{AeadCore, AeadMutInPlace, KeyInit, OsRng},
-    ChaCha20Poly1305, Nonce,
-};
-use chacha20poly1305::aead::{Aead, Payload};
-use crate::IoRWrapper;
 use crate::BUFFER_SIZE;
+use crate::IoRWrapper;
+use anyhow::{Context, Result, anyhow};
+use chacha20poly1305::aead::{Aead, Payload};
+use chacha20poly1305::{
+    ChaCha20Poly1305, Nonce,
+    aead::{AeadCore, AeadMutInPlace, KeyInit, OsRng},
+};
+use std::io::{Read, Write};
 
-pub(crate) fn encrypt_with_key_stream<R: Read, W: Write> (
+pub(crate) fn encrypt_with_key_stream<R: Read, W: Write>(
     key: &[u8; 32],
     reader: &mut R,
     writer: &mut W,
 ) -> Result<()> {
-    let cipher = ChaCha20Poly1305::new_from_slice(key)
-        .context("Invalid key length")?;
+    let cipher = ChaCha20Poly1305::new_from_slice(key).context("Invalid key length")?;
 
     let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
 
-    writer
-        .write_all(&nonce)
-        .context("Error writing nonce")?;
+    writer.write_all(&nonce).context("Error writing nonce")?;
 
     let mut buf = [0u8; BUFFER_SIZE];
 
     while let Ok(n) = reader.read(&mut buf) {
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
         let ct_chunk = cipher
             .encrypt(&nonce, Payload::from(&buf[..n]))
             .map_err(|e| anyhow::anyhow!("Error while encrypting the chunk: {}", e))?;
@@ -42,7 +41,12 @@ pub(crate) fn encrypt_with_key_stream<R: Read, W: Write> (
     Ok(())
 }
 
-pub(crate) fn decrypt_with_key_stream<R: Read, W: Write>(key: &[u8; 32], nonce: &[u8], mut reader: IoRWrapper<R>, mut writer: W) -> Result<()> {
+pub(crate) fn decrypt_with_key_stream<R: Read, W: Write>(
+    key: &[u8; 32],
+    nonce: &[u8],
+    mut reader: IoRWrapper<R>,
+    mut writer: W,
+) -> Result<()> {
     let mut cipher = ChaCha20Poly1305::new_from_slice(key).context("Invalid key length")?;
 
     let nonce = Nonce::from_slice(nonce);
@@ -64,7 +68,6 @@ pub(crate) fn decrypt_with_key_stream<R: Read, W: Write>(key: &[u8; 32], nonce: 
 
         writer.write_all(&ct_chunk)?;
     }
-
 
     Ok(())
 }
