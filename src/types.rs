@@ -1,8 +1,8 @@
-use oqs::kem::{PublicKey as libPublicKey, SecretKey as libSecretKey};
-use serde::{Deserialize, Serialize};
-use bincode::serde::{encode_to_vec,borrow_decode_from_slice};
 use crate::select_bincode_config;
 use anyhow::Result;
+use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
+use oqs::kem::{PublicKey as libPublicKey, SecretKey as libSecretKey};
+use serde::{Deserialize, Serialize};
 
 /// SecurityLevel defines the parameter sets (security strengths) supported by the ML-KEM algorithm.
 ///
@@ -47,10 +47,10 @@ pub struct SecretKey {
 
 impl SecretKey {
     pub fn to_vec(&self) -> Result<Vec<u8>> {
-        Ok(encode_to_vec(self,select_bincode_config()?)?)
+        Ok(encode_to_vec(self, select_bincode_config()?)?)
     }
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        Ok(borrow_decode_from_slice(bytes,select_bincode_config()?)?.0)
+        Ok(borrow_decode_from_slice(bytes, select_bincode_config()?)?.0)
     }
 }
 
@@ -81,10 +81,10 @@ pub struct PublicKey {
 
 impl PublicKey {
     pub fn to_vec(&self) -> Result<Vec<u8>> {
-        Ok(encode_to_vec(self,select_bincode_config()?)?)
+        Ok(encode_to_vec(self, select_bincode_config()?)?)
     }
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        Ok(borrow_decode_from_slice(bytes,select_bincode_config()?)?.0)
+        Ok(borrow_decode_from_slice(bytes, select_bincode_config()?)?.0)
     }
 }
 
@@ -114,9 +114,9 @@ pub struct MlKemKeyPair {
 
 impl MlKemKeyPair {
     pub fn to_vec(&self) -> Result<Vec<u8>> {
-        Ok(encode_to_vec(self,select_bincode_config()?)?)
+        Ok(encode_to_vec(self, select_bincode_config()?)?)
     }
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        Ok(borrow_decode_from_slice(bytes,select_bincode_config()?)?.0)
+        Ok(borrow_decode_from_slice(bytes, select_bincode_config()?)?.0)
     }
 }
