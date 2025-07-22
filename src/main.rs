@@ -1,7 +1,7 @@
 // main.rs - Script to generate tests.bin
 use anyhow::Result;
 use bincode::serde::encode_to_vec;
-use kychacha_crypto::{encrypt_stream, generate_keypair, public_key_to_bytes, secret_key_to_bytes};
+use kychacha_crypto::{encrypt_stream, generate_keypair};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Cursor, Write};
@@ -32,8 +32,8 @@ fn main() -> Result<()> {
 
     // Create the TestData structure
     let test_data = TestData {
-        secret_key: secret_key_to_bytes(keypair.private_key),
-        public_key: public_key_to_bytes(keypair.public_key),
+        secret_key: keypair.private_key.to_vec()?,
+        public_key: keypair.public_key.to_vec()?,
         encrypted_data,
     };
 

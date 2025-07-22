@@ -1,6 +1,7 @@
 //! Kyber-1024 key exchange implementation (NIST PQC Round 3)
 
-use crate::{MlKemKeyPair, select_oqs};
+use crate::{MlKemKeyPair, PublicKey, SecretKey, given_oqs};
+
 use anyhow::Result;
 use hkdf::Hkdf;
 use oqs;
@@ -40,12 +41,18 @@ pub(crate) fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]>
 /// # Errors
 /// Returns error if keypair generation fails
 pub fn generate_keypair() -> Result<MlKemKeyPair> {
-    let kem = select_oqs()?;
-    let (public_key, private_key) = kem
+    let (sec, kem) = given_oqs()?;
+    let (gpublic_key, gprivate_key) = kem
         .keypair()
         .map_err(|e| anyhow::anyhow!("Failed to generate ML-KEM keypair: {}", e))?;
     Ok(MlKemKeyPair {
-        public_key,
-        private_key,
+        public_key: PublicKey {
+            security: sec.clone(),
+            key: gpublic_key,
+        },
+        private_key: SecretKey {
+            security: sec,
+            key: gprivate_key,
+        },
     })
 }
