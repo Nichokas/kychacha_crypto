@@ -140,7 +140,7 @@ impl<W: Write> Writer for IoWWrapper<W> {
     }
 }
 
-pub struct IoRWrapper<R: Read>(pub R);
+struct IoRWrapper<R: Read>(pub R);
 
 impl<R: Read> Reader for IoRWrapper<R> {
     fn read(&mut self, bytes: &mut [u8]) -> Result<(), bincode::error::DecodeError> {
