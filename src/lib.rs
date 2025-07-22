@@ -57,7 +57,7 @@ use std::io::{Cursor, Read, Write};
 
 #[cfg(feature = "small-buffer")]
 pub(crate) const BUFFER_SIZE: usize = 4 * 1024;
-#[cfg(feature = "recomended-buffer")]
+#[cfg(feature = "recommended-buffer")]
 pub(crate) const BUFFER_SIZE: usize = 64 * 1024;
 #[cfg(feature = "medium-buffer")]
 pub(crate) const BUFFER_SIZE: usize    = 8 * 1024 * 1024;
