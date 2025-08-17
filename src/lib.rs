@@ -37,6 +37,55 @@
 //! ```
 //!
 //! # A Example With files
+//!
+//! # Multi-recipient Encryption
+//! Encrypt once for N recipients (each gets a wrapped content key) and stream the payload only a single time.
+//! Internally: a random 32-byte content key (ChaCha20-Poly1305) is generated; for every recipient public key we perform KEM encapsulation and then AEAD-encrypt the content key with the derived symmetric key. The ciphertext holds: Vec<(kem_ciphertext, aead_wrap_of_content_key)> followed by the bulk-encrypted data.
+//!
+//! ## Example
+//! ```
+//! use std::error::Error;
+//! use std::io::Cursor;
+//! use kychacha_crypto::{
+//!     generate_keypair,
+//!     encrypt_multiple_recipient,
+//!     decrypt_multiple_recipient,
+//! };
+//!
+//! fn main() -> Result<(), Box<dyn Error>> {
+//!     // Generate recipients (alice, bob, carol)
+//!     let alice = generate_keypair()?;
+//!     let bob = generate_keypair()?;
+//!     let carol = generate_keypair()?;
+//!
+//!     let mut encrypted = Vec::new();
+//!     encrypt_multiple_recipient(
+//!         vec![alice.public_key.clone(), bob.public_key.clone(), carol.public_key.clone()],
+//!         &mut Cursor::new(b"group message"),
+//!         &mut encrypted,
+//!     )?;
+//!
+//!     // Any listed recipient can decrypt
+//!     let mut out = Vec::new();
+//!     decrypt_multiple_recipient(&bob.private_key, &mut Cursor::new(&encrypted), &mut out)?;
+//!     assert_eq!(b"group message", &out[..]);
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Security Notes
+//! * Each recipient incurs one ML-KEM encapsulation (O(n)).
+//! * Payload is encrypted only once (constant time w.r.t recipients) with ChaCha20-Poly1305.
+//! * Unknown recipient keys simply fail to unwrap; no partial leakage.
+//! * Consider size: header grows roughly (kem_ct_len + 12 + 32 + 16) per recipient.
+//!
+//! ## When to use
+//! * Broadcast to small/medium groups (tens / low hundreds) efficiently.
+//! * Avoid re-encrypting large payloads per recipient.
+//!
+//! ## When not to use
+//! * Extremely large recipient lists (may become bandwidth heavy) — consider distributing the symmetric key via another channel.
+
 mod encryption;
 mod key_exchange;
 #[cfg(test)]
