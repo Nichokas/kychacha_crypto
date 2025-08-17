@@ -104,7 +104,7 @@ use oqs;
 use oqs::kem;
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
-pub(crate) use types::SecurityLevel;
+pub use types::SecurityLevel;
 pub use types::{MlKemKeyPair, PublicKey, SecretKey};
 use chacha20poly1305::{ChaCha20Poly1305, aead::{Aead, KeyInit, OsRng, AeadCore}};
 
