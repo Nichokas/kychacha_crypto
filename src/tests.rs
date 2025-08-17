@@ -1,6 +1,6 @@
 // tests/test.rs
 use crate::{decrypt, decrypt_stream, encrypt, encrypt_stream, generate_keypair};
-use crate::{encrypt_multiple_recipient, decrypt_multiple_recipient};
+use crate::{decrypt_multiple_recipient, encrypt_multiple_recipient};
 use anyhow::{Context, Result};
 use bincode::decode_from_slice;
 use chacha20poly1305::aead::OsRng;
@@ -328,7 +328,11 @@ fn test_multi_recipient_wrong_key() -> Result<(), Box<dyn Error>> {
 
     // Outsider should fail
     let mut out = Vec::new();
-    let res = decrypt_multiple_recipient(&outsider.private_key, &mut Cursor::new(encrypted.clone()), &mut out);
+    let res = decrypt_multiple_recipient(
+        &outsider.private_key,
+        &mut Cursor::new(encrypted.clone()),
+        &mut out,
+    );
     assert!(res.is_err());
 
     // Ensure a valid recipient still works after failure attempt

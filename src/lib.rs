@@ -97,6 +97,10 @@ use bincode::config::Config;
 use bincode::de::read::Reader;
 use bincode::enc::write::Writer;
 use bincode::{decode_from_reader, encode_into_writer};
+use chacha20poly1305::{
+    ChaCha20Poly1305,
+    aead::{Aead, AeadCore, KeyInit, OsRng},
+};
 use encryption::*;
 use key_exchange::derive_chacha_key;
 pub use key_exchange::generate_keypair;
@@ -106,7 +110,6 @@ use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
 pub use types::SecurityLevel;
 pub use types::{MlKemKeyPair, PublicKey, SecretKey};
-use chacha20poly1305::{ChaCha20Poly1305, aead::{Aead, KeyInit, OsRng, AeadCore}};
 
 #[cfg(feature = "small-buffer")]
 pub(crate) const BUFFER_SIZE: usize = 4 * 1024;
@@ -272,7 +275,7 @@ pub fn encrypt_multiple_recipient<R: Read, W: Write>(
     getrandom::fill(&mut ckt).unwrap();
     let mut writer = IoWWrapper(io_writer);
 
-    let mut for_all_k: Vec<(Vec<u8>,Vec<u8>)> = Vec::new();
+    let mut for_all_k: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     for pubk in server_pubkeys {
         let kem = select_oqs(&pubk.security)?;
 
@@ -292,7 +295,7 @@ pub fn encrypt_multiple_recipient<R: Read, W: Write>(
             .map_err(|e| anyhow::anyhow!("Failed to encrypt content key: {}", e))?;
         sink.extend_from_slice(&encrypted_ckt);
 
-        for_all_k.push((ct.into_vec(),sink));
+        for_all_k.push((ct.into_vec(), sink));
     }
 
     let config = match select_bincode_config() {
@@ -393,7 +396,8 @@ pub fn decrypt_multiple_recipient<R: Read, W: Write>(
 
         if let Ok(ss) = kem.decapsulate(&private_key.key, &ct) {
             let key = derive_chacha_key(ss)?;
-            if encr.len() < 12 + 16 { // nonce + minimum tag
+            if encr.len() < 12 + 16 {
+                // nonce + minimum tag
                 continue;
             }
             let nonce = &encr[0..12];
@@ -402,7 +406,7 @@ pub fn decrypt_multiple_recipient<R: Read, W: Write>(
                 .map_err(|e| anyhow::anyhow!("Invalid key length: {}", e))?;
             if let Ok(plain_ckt) = cipher.decrypt(nonce.into(), ct_ckt) {
                 if plain_ckt.len() == 32 {
-                    let mut arr = [0u8;32];
+                    let mut arr = [0u8; 32];
                     arr.copy_from_slice(&plain_ckt);
                     ckt_opt = Some(arr);
                     break;
@@ -418,7 +422,7 @@ pub fn decrypt_multiple_recipient<R: Read, W: Write>(
     // Decrypt the actual data with the recovered content key
     let mut nonce_bytes = [0u8; 12];
     reader.0.read_exact(&mut nonce_bytes)?;
-    
+
     decrypt_with_key_stream(&ckt_opt.unwrap(), &nonce_bytes, reader, writer)?;
 
     Ok(())
@@ -436,11 +440,7 @@ pub fn decrypt_multiple_recipient<R: Read, W: Write>(
 )]
 pub fn decrypt(encrypted_data: &[u8], private_key: &SecretKey) -> Result<String> {
     let mut buf = Vec::new();
-    decrypt_stream(
-        private_key,
-        &mut Cursor::new(encrypted_data),
-        &mut buf,
-    )?;
+    decrypt_stream(private_key, &mut Cursor::new(encrypted_data), &mut buf)?;
     Ok(String::from_utf8_lossy(&buf).into())
 }
 
