@@ -1,6 +1,6 @@
 //! Kyber-1024 key exchange implementation (NIST PQC Round 3)
 
-use crate::{MlKemKeyPair, PublicKey, SecretKey, given_oqs, select_oqs, SecurityLevel};
+use crate::{MlKemKeyPair, PublicKey, SecretKey, SecurityLevel, given_oqs, select_oqs};
 
 use anyhow::Result;
 use hkdf::Hkdf;
@@ -81,6 +81,9 @@ pub fn generate_keypair_with_level(security: SecurityLevel) -> Result<MlKemKeyPa
             security: security.clone(),
             key: gpublic_key,
         },
-        private_key: SecretKey { security, key: gprivate_key },
+        private_key: SecretKey {
+            security,
+            key: gprivate_key,
+        },
     })
 }
