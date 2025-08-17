@@ -572,12 +572,13 @@ dependencies = [
 
 [[package]]
 name = "kychacha_crypto"
-version = "5.1.1"
+version = "6.0.0"
 dependencies = [
  "anyhow",
  "bincode 2.0.1",
  "chacha20poly1305",
  "codspeed-criterion-compat",
+ "getrandom 0.3.3",
  "hkdf",
  "oqs",
  "serde",

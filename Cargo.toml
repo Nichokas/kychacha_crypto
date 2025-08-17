@@ -1,7 +1,7 @@
 [package]
 name = "kychacha_crypto"
 description = "A Post-Quantum Secure Encryption Protocol using chacha20poly1305 and CRYSTALS-kyber"
-version = "5.1.1"
+version = "6.0.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/Nichokas/kychacha_crypto"
@@ -37,6 +37,7 @@ sha2 = "0.10.9"
 bincode = { version = "2.0.1", features = ["serde"] }
 serde_bytes = "0.11.17"
 oqs = { version = "0.11.0", default-features = false, features = ["ml_kem","serde"] }
+getrandom = "0.3.3"
 
 [dev-dependencies]
 tempfile = "3.20.0"
