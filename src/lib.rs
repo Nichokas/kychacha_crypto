@@ -47,7 +47,7 @@ use anyhow::Result;
 use bincode::config::Config;
 use bincode::de::read::Reader;
 use bincode::enc::write::Writer;
-use bincode::encode_into_writer;
+use bincode::{decode_from_reader, encode_into_writer};
 use encryption::*;
 use key_exchange::derive_chacha_key;
 pub use key_exchange::generate_keypair;
@@ -57,6 +57,7 @@ use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
 pub(crate) use types::SecurityLevel;
 pub use types::{MlKemKeyPair, PublicKey, SecretKey};
+use chacha20poly1305::{ChaCha20Poly1305, aead::{Aead, KeyInit, OsRng, AeadCore}};
 
 #[cfg(feature = "small-buffer")]
 pub(crate) const BUFFER_SIZE: usize = 4 * 1024;
@@ -107,8 +108,10 @@ pub(crate) fn given_oqs() -> Result<(SecurityLevel, kem::Kem)> {
         ));
     }
 
-    // Default fallback if no feature is enabled
-    anyhow::bail!("No ML-KEM algorithm feature selected")
+    #[cfg(not(any(feature = "mlkem512", feature = "mlkem768", feature = "mlkem1024")))]
+    {
+        anyhow::bail!("No ML-KEM algorithm feature selected")
+    }
 }
 
 pub(crate) fn select_oqs(sec: &SecurityLevel) -> Result<kem::Kem> {
@@ -211,6 +214,52 @@ pub fn encrypt_stream<R: Read, W: Write>(
     Ok(())
 }
 
+pub fn encrypt_multiple_recipient<R: Read, W: Write>(
+    server_pubkeys: Vec<PublicKey>,
+    reader: &mut R,
+    io_writer: &mut W,
+) -> Result<()> {
+    let mut ckt = [0u8; 32];
+    getrandom::fill(&mut ckt).unwrap();
+    let mut writer = IoWWrapper(io_writer);
+
+    let mut for_all_k: Vec<(Vec<u8>,Vec<u8>)> = Vec::new();
+    for pubk in server_pubkeys {
+        let kem = select_oqs(&pubk.security)?;
+
+        let (ct, ss) = kem
+            .encapsulate(&pubk.key)
+            .map_err(|e| anyhow::anyhow!("Failed to encapsulate with public key: {}", e))?;
+
+        let chacha_key = derive_chacha_key(ss)?;
+        // One-shot AEAD encrypt of the content key (ckt)
+        let cipher = ChaCha20Poly1305::new_from_slice(&chacha_key)
+            .map_err(|e| anyhow::anyhow!("Invalid key length: {}", e))?;
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+        let mut sink = Vec::with_capacity(12 + 32 + 16);
+        sink.extend_from_slice(&nonce);
+        let encrypted_ckt = cipher
+            .encrypt(&nonce, ckt.as_ref())
+            .map_err(|e| anyhow::anyhow!("Failed to encrypt content key: {}", e))?;
+        sink.extend_from_slice(&encrypted_ckt);
+
+        for_all_k.push((ct.into_vec(),sink));
+    }
+
+    let config = match select_bincode_config() {
+        Ok(config) => config,
+        Err(_) => anyhow::bail!(
+            "The bincode (kychacha_crypto crate) configuration feature flag is not properly configured."
+        ),
+    };
+
+    encode_into_writer(for_all_k, &mut writer, config)?;
+
+    encrypt_with_key_stream(&ckt, reader, &mut writer.0)?;
+
+    Ok(())
+}
+
 /// Decrypts data from a stream that implements std::io::Read
 ///
 /// # Example showing file-based usage
@@ -238,12 +287,12 @@ pub fn encrypt_stream<R: Read, W: Write>(
 /// ```
 pub fn decrypt_stream<R: Read, W: Write>(
     private_key: &SecretKey,
-    reader: &mut R,
+    io_reader: &mut R,
     writer: &mut W,
 ) -> Result<()> {
     let kem = select_oqs(&private_key.security)?;
 
-    let mut wreader = IoRWrapper(reader);
+    let mut reader = IoRWrapper(io_reader);
 
     let config = match select_bincode_config() {
         Ok(config) => config,
@@ -252,7 +301,7 @@ pub fn decrypt_stream<R: Read, W: Write>(
         ),
     };
 
-    let ct_bytes: Vec<u8> = bincode::decode_from_reader(&mut wreader, config)?;
+    let ct_bytes: Vec<u8> = bincode::decode_from_reader(&mut reader, config)?;
     let ct = kem
         .ciphertext_from_bytes(&ct_bytes)
         .ok_or_else(|| anyhow::anyhow!("Error while retreating the ciphertext from bytes"))?;
@@ -263,9 +312,65 @@ pub fn decrypt_stream<R: Read, W: Write>(
     let chacha_key = derive_chacha_key(ss)?;
 
     let mut nonce_bytes = [0u8; 12];
-    wreader.0.read_exact(&mut nonce_bytes)?;
+    reader.0.read_exact(&mut nonce_bytes)?;
 
-    decrypt_with_key_stream(&chacha_key, &nonce_bytes, wreader, writer)?;
+    decrypt_with_key_stream(&chacha_key, &nonce_bytes, reader, writer)?;
+
+    Ok(())
+}
+
+pub fn decrypt_multiple_recipient<R: Read, W: Write>(
+    private_key: &SecretKey,
+    io_reader: &mut R,
+    writer: &mut W,
+) -> Result<()> {
+    let kem = select_oqs(&private_key.security)?;
+    let mut reader = IoRWrapper(io_reader);
+
+    let config = match select_bincode_config() {
+        Ok(config) => config,
+        Err(_) => anyhow::bail!(
+            "The bincode (kychacha_crypto crate) configuration feature flag is not properly configured."
+        ),
+    };
+
+    let all_keys: Vec<(Vec<u8>, Vec<u8>)> = decode_from_reader(&mut reader, config)?;
+    let mut ckt_opt: Option<[u8; 32]> = None;
+
+    for (ciph, encr) in all_keys {
+        let ct = kem
+            .ciphertext_from_bytes(&ciph)
+            .ok_or_else(|| anyhow::anyhow!("Error while retreating the ciphertext from bytes"))?;
+
+        if let Ok(ss) = kem.decapsulate(&private_key.key, &ct) {
+            let key = derive_chacha_key(ss)?;
+            if encr.len() < 12 + 16 { // nonce + minimum tag
+                continue;
+            }
+            let nonce = &encr[0..12];
+            let ct_ckt = &encr[12..];
+            let cipher = ChaCha20Poly1305::new_from_slice(&key)
+                .map_err(|e| anyhow::anyhow!("Invalid key length: {}", e))?;
+            if let Ok(plain_ckt) = cipher.decrypt(nonce.into(), ct_ckt) {
+                if plain_ckt.len() == 32 {
+                    let mut arr = [0u8;32];
+                    arr.copy_from_slice(&plain_ckt);
+                    ckt_opt = Some(arr);
+                    break;
+                }
+            }
+        }
+    }
+
+    if ckt_opt.is_none() {
+        anyhow::bail!("Your key is not included on the recipients of this message/file")
+    }
+
+    // Decrypt the actual data with the recovered content key
+    let mut nonce_bytes = [0u8; 12];
+    reader.0.read_exact(&mut nonce_bytes)?;
+    
+    decrypt_with_key_stream(&ckt_opt.unwrap(), &nonce_bytes, reader, writer)?;
 
     Ok(())
 }
@@ -284,7 +389,7 @@ pub fn decrypt(encrypted_data: &[u8], private_key: &SecretKey) -> Result<String>
     let mut buf = Vec::new();
     decrypt_stream(
         private_key,
-        &mut std::io::Cursor::new(encrypted_data),
+        &mut Cursor::new(encrypted_data),
         &mut buf,
     )?;
     Ok(String::from_utf8_lossy(&buf).into())

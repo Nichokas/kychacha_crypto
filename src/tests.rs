@@ -1,5 +1,6 @@
 // tests/test.rs
 use crate::{decrypt, decrypt_stream, encrypt, encrypt_stream, generate_keypair};
+use crate::{encrypt_multiple_recipient, decrypt_multiple_recipient};
 use anyhow::{Context, Result};
 use bincode::decode_from_slice;
 use chacha20poly1305::aead::OsRng;
@@ -283,5 +284,56 @@ fn file_round_trip() -> Result<(), Box<dyn Error>> {
     decrypt_stream(&keypair.private_key, &mut file, &mut decrypted)?;
 
     assert_eq!(String::from_utf8_lossy(&decrypted), "file content example");
+    Ok(())
+}
+
+#[test]
+fn test_multi_recipient_round_trip() -> Result<(), Box<dyn Error>> {
+    // Generate three recipient keypairs
+    let kp1 = generate_keypair()?;
+    let kp2 = generate_keypair()?;
+    let kp3 = generate_keypair()?;
+
+    let message = b"multi recipient secret data";
+    let mut encrypted = Vec::new();
+    encrypt_multiple_recipient(
+        vec![kp1.public_key, kp2.public_key, kp3.public_key],
+        &mut Cursor::new(message.as_slice()),
+        &mut encrypted,
+    )?;
+
+    // Each recipient should be able to decrypt
+    for privk in [&kp1.private_key, &kp2.private_key, &kp3.private_key] {
+        let mut out = Vec::new();
+        decrypt_multiple_recipient(privk, &mut Cursor::new(encrypted.clone()), &mut out)?;
+        assert_eq!(out, message);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_multi_recipient_wrong_key() -> Result<(), Box<dyn Error>> {
+    let kp1 = generate_keypair()?;
+    let kp2 = generate_keypair()?;
+    let kp3 = generate_keypair()?;
+    let outsider = generate_keypair()?; // not included
+
+    let message = b"top secret";
+    let mut encrypted = Vec::new();
+    encrypt_multiple_recipient(
+        vec![kp1.public_key, kp2.public_key, kp3.public_key],
+        &mut Cursor::new(message.as_slice()),
+        &mut encrypted,
+    )?;
+
+    // Outsider should fail
+    let mut out = Vec::new();
+    let res = decrypt_multiple_recipient(&outsider.private_key, &mut Cursor::new(encrypted.clone()), &mut out);
+    assert!(res.is_err());
+
+    // Ensure a valid recipient still works after failure attempt
+    let mut out_ok = Vec::new();
+    decrypt_multiple_recipient(&kp2.private_key, &mut Cursor::new(encrypted), &mut out_ok)?;
+    assert_eq!(out_ok, message);
     Ok(())
 }
