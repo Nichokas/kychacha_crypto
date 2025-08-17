@@ -103,7 +103,7 @@ use chacha20poly1305::{
 };
 use encryption::*;
 use key_exchange::derive_chacha_key;
-pub use key_exchange::{generate_keypair,generate_keypair_with_level};
+pub use key_exchange::{generate_keypair, generate_keypair_with_level};
 use oqs;
 use oqs::kem;
 use serde::{Deserialize, Serialize};
