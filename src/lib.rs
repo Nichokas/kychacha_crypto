@@ -99,7 +99,7 @@ use bincode::enc::write::Writer;
 use bincode::{decode_from_reader, encode_into_writer};
 use encryption::*;
 use key_exchange::derive_chacha_key;
-pub use key_exchange::generate_keypair;
+pub use key_exchange::{generate_keypair,generate_keypair_with_level};
 use oqs;
 use oqs::kem;
 use serde::{Deserialize, Serialize};
