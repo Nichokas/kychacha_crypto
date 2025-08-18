@@ -3,6 +3,17 @@ use anyhow::Result;
 use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
 use oqs::kem::{PublicKey as libPublicKey, SecretKey as libSecretKey};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use num_bigint::BigUint;
+
+fn hash_bytes_to_decimal_hex(bytes: &[u8]) -> (String, String) {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    let digest = hasher.finalize();
+    let dec = BigUint::from_bytes_be(&digest).to_str_radix(10);
+    let hex = digest.iter().map(|b| format!("{:02x}", b)).collect();
+    (dec, hex)
+}
 
 /// SecurityLevel defines the parameter sets (security strengths) supported by the ML-KEM algorithm.
 ///
@@ -56,6 +67,16 @@ impl SecretKey {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(borrow_decode_from_slice(bytes, select_bincode_config()?)?.0)
     }
+
+    /// Returns the SHA-256 hash of the secret key as a decimal string.
+    pub fn hash_decimal(&self) -> String {
+        hash_bytes_to_decimal_hex(self.key.as_ref()).0
+    }
+
+    /// Returns the SHA-256 hash of the secret key as a hexadecimal string.
+    pub fn hash_hex(&self) -> String {
+        hash_bytes_to_decimal_hex(self.key.as_ref()).1
+    }
 }
 
 /// PublicKey holds the public component of an ML-KEM key pair along with its security level.
@@ -93,6 +114,16 @@ impl PublicKey {
     /// Deserializes a `PublicKey` from a bincode-encoded byte slice.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(borrow_decode_from_slice(bytes, select_bincode_config()?)?.0)
+    }
+
+    /// Returns the SHA-256 hash of the public key as a decimal string.
+    pub fn hash_decimal(&self) -> String {
+        hash_bytes_to_decimal_hex(self.key.as_ref()).0
+    }
+
+    /// Returns the SHA-256 hash of the public key as a hexadecimal string.
+    pub fn hash_hex(&self) -> String {
+        hash_bytes_to_decimal_hex(self.key.as_ref()).1
     }
 }
 

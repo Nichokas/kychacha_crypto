@@ -5,6 +5,9 @@ use anyhow::{Context, Result};
 use bincode::decode_from_slice;
 use chacha20poly1305::aead::OsRng;
 use chacha20poly1305::aead::rand_core::RngCore;
+use num_bigint::BigUint;
+use sha2::{Digest, Sha256};
+use hex;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Cursor, Read, Write};
@@ -104,6 +107,29 @@ fn legacy_functions() -> Result<(), Box<dyn Error>> {
     let ciphertext = encrypt(keypair.public_key, b"secret message")?;
     let plaintext = decrypt(&ciphertext, &keypair.private_key)?;
     assert_eq!(plaintext, "secret message");
+    Ok(())
+}
+
+#[test]
+fn test_key_hashes() -> Result<(), Box<dyn Error>> {
+    let keypair = generate_keypair()?;
+
+    let mut hasher = Sha256::new();
+    hasher.update(keypair.public_key.key.as_ref());
+    let digest = hasher.finalize();
+    let expected_hex = hex::encode(&digest);
+    let expected_dec = BigUint::from_bytes_be(&digest).to_str_radix(10);
+    assert_eq!(keypair.public_key.hash_hex(), expected_hex);
+    assert_eq!(keypair.public_key.hash_decimal(), expected_dec);
+
+    let mut hasher = Sha256::new();
+    hasher.update(keypair.private_key.key.as_ref());
+    let digest = hasher.finalize();
+    let expected_hex = hex::encode(&digest);
+    let expected_dec = BigUint::from_bytes_be(&digest).to_str_radix(10);
+    assert_eq!(keypair.private_key.hash_hex(), expected_hex);
+    assert_eq!(keypair.private_key.hash_decimal(), expected_dec);
+
     Ok(())
 }
 
