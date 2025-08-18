@@ -1,10 +1,10 @@
 use crate::select_bincode_config;
 use anyhow::Result;
 use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
+use num_bigint::BigUint;
 use oqs::kem::{PublicKey as libPublicKey, SecretKey as libSecretKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use num_bigint::BigUint;
 
 fn hash_bytes_to_decimal_hex(bytes: &[u8]) -> (String, String) {
     let mut hasher = Sha256::new();
