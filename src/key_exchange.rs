@@ -42,52 +42,19 @@ pub(crate) fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]>
 /// # Errors
 /// Returns error if keypair generation fails
 pub fn generate_keypair() -> Result<MlKemKeyPair> {
-    let (sec, ssec, kem, sig) = given_oqs()?;
-    let (gpublic_key, gprivate_key) = kem
-        .keypair()
-        .map_err(|e| anyhow::anyhow!("Failed to generate ML-KEM keypair: {}", e))?;
+    let (sec, ssec, _, _) = given_oqs()?;
 
     #[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
-    let result = if let Some(sig_instance) = sig {
-        let (sigpublic, sigprivate) = sig_instance
-            .keypair()
-            .map_err(|e| anyhow::anyhow!("Failed to generate signature keypair: {}", e))?;
-
-        Ok(MlKemKeyPair {
-            public_key: PublicKey {
-                security: sec.clone(),
-                key: gpublic_key,
-            },
-            private_key: SecretKey {
-                security: sec,
-                key: gprivate_key,
-            },
-            public_sign_key: SignPublicKey {
-                security: ssec.clone().unwrap(),
-                key: sigpublic,
-            },
-            private_sign_key: SignSecretKey {
-                security: ssec.unwrap(),
-                key: sigprivate,
-            }
-        })
-    } else {
-        anyhow::bail!("Signature module enabled but no signature algorithm instance available")
-    };
+    {
+        if let Some(sign_sec) = ssec {
+            generate_keypair_with_level(&sec, Some(&sign_sec))
+        } else {
+            anyhow::bail!("Signature module enabled but no signature security level available")
+        }
+    }
 
     #[cfg(not(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5")))]
-    let result = Ok(MlKemKeyPair {
-        public_key: PublicKey {
-            security: sec.clone(),
-            key: gpublic_key,
-        },
-        private_key: SecretKey {
-            security: sec,
-            key: gprivate_key,
-        },
-    });
-
-    result
+    generate_keypair_with_level(&sec, None)
 }
 
 /// Generates an ML-KEM keypair for a specified security level (runtime selection).
