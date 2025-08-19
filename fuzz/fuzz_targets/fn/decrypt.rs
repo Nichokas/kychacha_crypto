@@ -1,6 +1,6 @@
 #![no_main]
 
-use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair, SecretKey};
+use kychacha_crypto::{SecretKey, decrypt_stream, encrypt_stream, generate_keypair};
 use libfuzzer_sys::fuzz_target;
 use std::io::{Cursor, Write};
 use tempfile::tempfile;
