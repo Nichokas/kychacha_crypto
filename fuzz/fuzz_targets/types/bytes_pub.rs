@@ -1,6 +1,6 @@
 #![no_main]
 
-use kychacha_crypto::{PublicKey};
+use kychacha_crypto::PublicKey;
 use libfuzzer_sys::fuzz_target;
 
 // Bytes <=> Public key

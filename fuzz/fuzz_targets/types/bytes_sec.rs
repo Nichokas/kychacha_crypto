@@ -1,6 +1,6 @@
 #![no_main]
 
-use kychacha_crypto::{SecretKey};
+use kychacha_crypto::SecretKey;
 use libfuzzer_sys::fuzz_target;
 
 // Bytes <=> Secret key
