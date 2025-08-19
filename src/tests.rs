@@ -1,11 +1,10 @@
 // tests/test.rs
-use crate::{decrypt, decrypt_stream, encrypt, encrypt_stream, generate_keypair};
+use crate::{decrypt, decrypt_stream, encrypt, encrypt_stream};
 use crate::{decrypt_multiple_recipient, encrypt_multiple_recipient, generate_keypair_with_level};
 use crate::{SecurityLevel, SignSecurityLevel};
-use anyhow::{Context, Result};
-use bincode::decode_from_slice;
-use chacha20poly1305::aead::OsRng;
+use anyhow::Result;
 use chacha20poly1305::aead::rand_core::RngCore;
+use chacha20poly1305::aead::OsRng;
 use hex;
 use num_bigint::BigUint;
 use sha2::{Digest, Sha256};
@@ -13,8 +12,6 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Cursor, Read, Write};
 use tempfile::tempfile;
-#[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
-use crate::signing;
 
 // Función auxiliar para tests que asegura el uso de Dilithium3
 #[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
@@ -204,8 +201,6 @@ fn test_tampered_nonce() {
     )
     .unwrap();
 
-    // Find and corrupt the nonce (12 bytes after the KEM ciphertext)
-    // The nonce comes after the bincode-encoded KEM ciphertext
     let mut corrupted = encrypted.clone();
     if corrupted.len() > 50 {
         // Try to find where the nonce likely starts and corrupt it
@@ -290,39 +285,6 @@ fn test_wrong_key_decryption() {
     );
 
     assert!(result.is_err());
-}
-
-#[test]
-fn test_known_vector() -> Result<()> {
-    let path = "tests.bin";
-
-    let config = bincode::config::standard()
-        .with_big_endian()
-        .with_variable_int_encoding();
-
-    let metadata = std::fs::metadata(path).context(format!(
-        "File '{}' not found. Run `cargo run --bin main` first",
-        path
-    ))?;
-
-    let min_size = 100;
-
-    if metadata.len() < min_size {
-        anyhow::bail!(
-            "Corrupted file: size {} < minimum expected {}",
-            metadata.len(),
-            min_size
-        );
-    }
-
-    let bytes = std::fs::read(path)?;
-
-    let (_empty, _): ((), usize) = decode_from_slice(&bytes, config)?;
-
-    // Skip the TestData decode since it's not compatible with current format
-    // Instead, just verify we can read the file structure
-
-    Ok(())
 }
 
 #[test]

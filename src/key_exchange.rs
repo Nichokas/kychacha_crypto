@@ -139,8 +139,6 @@ pub fn generate_keypair_with_level(security: &SecurityLevel, sign_sec: Option<&S
             anyhow::bail!("Signature module enabled but no signature algorithm instance available")
         }
     } else {
-        // No sign security level specified, but signature features are enabled
-        // Now we'll throw an error instead of creating empty keys
         anyhow::bail!("Signature features are enabled, but no signature security level was specified. Please provide a SignSecurityLevel.")
     };
 
