@@ -3,6 +3,7 @@ use anyhow::Result;
 use bincode::serde::{borrow_decode_from_slice, encode_to_vec};
 use num_bigint::BigUint;
 use oqs::kem::{PublicKey as libPublicKey, SecretKey as libSecretKey};
+use oqs::sig::{PublicKey as libSignPublicKey, SecretKey as libSignSecretKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -17,7 +18,7 @@ fn hash_bytes_to_decimal_hex(bytes: &[u8]) -> (String, String) {
 
 /// SecurityLevel defines the parameter sets (security strengths) supported by the ML-KEM algorithm.
 ///
-/// Each variant corresponds to a NIST PQC Round 3 Kyber parameter set.
+/// Each variant corresponds to an NIST PQC Round 3 Kyber parameter set.
 ///
 /// # Variants
 /// - `MlKem512`: 512-bit security level
@@ -29,6 +30,14 @@ pub enum SecurityLevel {
     MlKem512 = 512,
     MlKem768 = 768,
     MlKem1024 = 1024,
+}
+
+#[repr(u16)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum SignSecurityLevel {
+    Dilithium2 = 2,
+    Dilithium3 = 3,
+    Dilithium5 = 5,
 }
 
 /// SecretKey holds the private component of an ML-KEM key pair along with its security level.
@@ -59,6 +68,35 @@ pub struct SecretKey {
 }
 
 impl SecretKey {
+    /// Serializes this `SecretKey` into a bincode-encoded `Vec<u8>`.
+    pub fn to_vec(&self) -> Result<Vec<u8>> {
+        Ok(encode_to_vec(self, select_bincode_config()?)?)
+    }
+    /// Deserializes a `SecretKey` from a bincode-encoded byte slice.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(borrow_decode_from_slice(bytes, select_bincode_config()?)?.0)
+    }
+
+    /// Returns the SHA-256 hash of the secret key as a decimal string.
+    pub fn hash_decimal(&self) -> String {
+        hash_bytes_to_decimal_hex(self.key.as_ref()).0
+    }
+
+    /// Returns the SHA-256 hash of the secret key as a hexadecimal string.
+    pub fn hash_hex(&self) -> String {
+        hash_bytes_to_decimal_hex(self.key.as_ref()).1
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct SignSecretKey {
+    /// The security level associated with this secret key.
+    pub security: SignSecurityLevel,
+    /// The underlying OQS secret key blob.
+    pub key: libSignSecretKey,
+}
+
+impl SignSecretKey {
     /// Serializes this `SecretKey` into a bincode-encoded `Vec<u8>`.
     pub fn to_vec(&self) -> Result<Vec<u8>> {
         Ok(encode_to_vec(self, select_bincode_config()?)?)
@@ -127,6 +165,35 @@ impl PublicKey {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct SignPublicKey {
+    /// The security level associated with this public key.
+    pub security: SignSecurityLevel,
+    /// The underlying OQS public key blob.
+    pub key: libSignPublicKey,
+}
+
+impl SignPublicKey {
+    /// Serializes this `PublicKey` into a bincode-encoded `Vec<u8>`.
+    pub fn to_vec(&self) -> Result<Vec<u8>> {
+        Ok(encode_to_vec(self, select_bincode_config()?)?)
+    }
+    /// Deserializes a `PublicKey` from a bincode-encoded byte slice.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(borrow_decode_from_slice(bytes, select_bincode_config()?)?.0)
+    }
+
+    /// Returns the SHA-256 hash of the public key as a decimal string.
+    pub fn hash_decimal(&self) -> String {
+        hash_bytes_to_decimal_hex(self.key.as_ref()).0
+    }
+
+    /// Returns the SHA-256 hash of the public key as a hexadecimal string.
+    pub fn hash_hex(&self) -> String {
+        hash_bytes_to_decimal_hex(self.key.as_ref()).1
+    }
+}
+
 /// MlKemKeyPair contains both the private and public KEM keys for ML-KEM operations.
 ///
 /// Provides serialization (`to_vec`) and deserialization (`from_bytes`) helpers.
@@ -147,10 +214,12 @@ impl PublicKey {
 /// ```
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct MlKemKeyPair {
-    /// The `SecretKey` component (private key) of the key pair.
     pub private_key: SecretKey,
-    /// The `PublicKey` component (public key) of the key pair.
     pub public_key: PublicKey,
+    #[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
+    pub private_sign_key: SignSecretKey,
+    #[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
+    pub public_sign_key: SignPublicKey,
 }
 
 impl MlKemKeyPair {
@@ -161,5 +230,29 @@ impl MlKemKeyPair {
     /// Deserializes an `MlKemKeyPair` from a bincode-encoded byte slice.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(borrow_decode_from_slice(bytes, select_bincode_config()?)?.0)
+    }
+
+    /// Returns the SHA-256 hash (decimal) derived ONLY from public key material.
+    /// Order: public KEM key [|| public signing key]. Private keys are NEVER hashed.
+    pub fn hash_decimal(&self) -> String {
+        let mut all = Vec::new();
+        all.extend_from_slice(self.public_key.key.as_ref());
+        #[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
+        {
+            all.extend_from_slice(self.public_sign_key.key.as_ref());
+        }
+        hash_bytes_to_decimal_hex(&all).0
+    }
+
+    /// Returns the SHA-256 hash (hex) derived ONLY from public key material.
+    /// Order: public KEM key [|| public signing key]. Private keys are NEVER hashed.
+    pub fn hash_hex(&self) -> String {
+        let mut all = Vec::new();
+        all.extend_from_slice(self.public_key.key.as_ref());
+        #[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
+        {
+            all.extend_from_slice(self.public_sign_key.key.as_ref());
+        }
+        hash_bytes_to_decimal_hex(&all).1
     }
 }

@@ -1,6 +1,7 @@
 // tests/test.rs
 use crate::{decrypt, decrypt_stream, encrypt, encrypt_stream, generate_keypair};
-use crate::{decrypt_multiple_recipient, encrypt_multiple_recipient};
+use crate::{decrypt_multiple_recipient, encrypt_multiple_recipient, generate_keypair_with_level};
+use crate::{SecurityLevel, SignSecurityLevel};
 use anyhow::{Context, Result};
 use bincode::decode_from_slice;
 use chacha20poly1305::aead::OsRng;
@@ -12,10 +13,24 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Cursor, Read, Write};
 use tempfile::tempfile;
+#[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
+use crate::signing;
+
+// Función auxiliar para tests que asegura el uso de Dilithium3
+#[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
+fn generate_test_keypair() -> Result<crate::MlKemKeyPair> {
+    // Usamos Dilithium3 específicamente como nivel de seguridad para firmas
+    generate_keypair_with_level(&SecurityLevel::MlKem768, Some(&SignSecurityLevel::Dilithium3))
+}
+
+#[cfg(not(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5")))]
+fn generate_test_keypair() -> Result<crate::MlKemKeyPair> {
+    generate_keypair()
+}
 
 #[test]
 fn test_round_trip() -> Result<(), Box<dyn Error>> {
-    let keypair = generate_keypair()?;
+    let keypair = generate_test_keypair()?;
     let mut sink = Vec::new();
     encrypt_stream(
         keypair.public_key,
@@ -52,7 +67,7 @@ fn test_big_round_trip() -> Result<(), Box<dyn Error>> {
     use std::io::Seek;
     file.seek(std::io::SeekFrom::Start(0))?;
 
-    let keypair = generate_keypair()?;
+    let keypair = generate_test_keypair()?;
     let mut encrypted_file = tempfile()?;
     encrypt_stream(keypair.public_key, &mut file, &mut encrypted_file)?;
 
@@ -103,7 +118,7 @@ fn test_big_round_trip() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn legacy_functions() -> Result<(), Box<dyn Error>> {
-    let keypair = generate_keypair()?;
+    let keypair = generate_test_keypair()?;
     let ciphertext = encrypt(keypair.public_key, b"secret message")?;
     let plaintext = decrypt(&ciphertext, &keypair.private_key)?;
     assert_eq!(plaintext, "secret message");
@@ -112,8 +127,9 @@ fn legacy_functions() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_key_hashes() -> Result<(), Box<dyn Error>> {
-    let keypair = generate_keypair()?;
+    let keypair = generate_test_keypair()?;
 
+    // Test public key hash
     let mut hasher = Sha256::new();
     hasher.update(keypair.public_key.key.as_ref());
     let digest = hasher.finalize();
@@ -122,6 +138,7 @@ fn test_key_hashes() -> Result<(), Box<dyn Error>> {
     assert_eq!(keypair.public_key.hash_hex(), expected_hex);
     assert_eq!(keypair.public_key.hash_decimal(), expected_dec);
 
+    // Test private key hash
     let mut hasher = Sha256::new();
     hasher.update(keypair.private_key.key.as_ref());
     let digest = hasher.finalize();
@@ -130,12 +147,30 @@ fn test_key_hashes() -> Result<(), Box<dyn Error>> {
     assert_eq!(keypair.private_key.hash_hex(), expected_hex);
     assert_eq!(keypair.private_key.hash_decimal(), expected_dec);
 
+    // Test full keypair hash (combines public KEM key and public sign key if available)
+    let mut hasher = Sha256::new();
+    let mut combined = Vec::new();
+    combined.extend_from_slice(keypair.public_key.key.as_ref());
+
+    #[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
+    {
+        combined.extend_from_slice(keypair.public_sign_key.key.as_ref());
+    }
+
+    hasher.update(&combined);
+    let digest = hasher.finalize();
+    let expected_hex = hex::encode(&digest);
+    let expected_dec = BigUint::from_bytes_be(&digest).to_str_radix(10);
+
+    assert_eq!(keypair.hash_hex(), expected_hex);
+    assert_eq!(keypair.hash_decimal(), expected_dec);
+
     Ok(())
 }
 
 #[test]
 fn test_tampered_ciphertext() {
-    let server_kp = generate_keypair().unwrap();
+    let server_kp = generate_test_keypair().unwrap();
     let mut encrypted = Vec::new();
     encrypt_stream(
         server_kp.public_key,
@@ -160,7 +195,7 @@ fn test_tampered_ciphertext() {
 
 #[test]
 fn test_tampered_nonce() {
-    let server_kp = generate_keypair().unwrap();
+    let server_kp = generate_test_keypair().unwrap();
     let mut encrypted = Vec::new();
     encrypt_stream(
         server_kp.public_key,
@@ -189,7 +224,7 @@ fn test_tampered_nonce() {
 
 #[test]
 fn test_empty_message() -> Result<()> {
-    let server_kp = generate_keypair()?;
+    let server_kp = generate_test_keypair()?;
     let msg = "";
 
     let mut encrypted = Vec::new();
@@ -212,7 +247,7 @@ fn test_empty_message() -> Result<()> {
 
 #[test]
 fn test_large_message() -> Result<()> {
-    let server_kp = generate_keypair()?;
+    let server_kp = generate_test_keypair()?;
     let msg = "A".repeat(10_000);
 
     let mut encrypted = Vec::new();
@@ -235,8 +270,8 @@ fn test_large_message() -> Result<()> {
 
 #[test]
 fn test_wrong_key_decryption() {
-    let server_kp = generate_keypair().unwrap();
-    let attacker_kp = generate_keypair().unwrap();
+    let server_kp = generate_test_keypair().unwrap();
+    let attacker_kp = generate_test_keypair().unwrap();
     let msg = "Confidential message.";
 
     let mut encrypted = Vec::new();
@@ -292,7 +327,7 @@ fn test_known_vector() -> Result<()> {
 
 #[test]
 fn file_round_trip() -> Result<(), Box<dyn Error>> {
-    let keypair = generate_keypair()?;
+    let keypair = generate_test_keypair()?;
     let mut encrypted_data = Vec::new();
     encrypt_stream(
         keypair.public_key,
@@ -316,9 +351,9 @@ fn file_round_trip() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_multi_recipient_round_trip() -> Result<(), Box<dyn Error>> {
     // Generate three recipient keypairs
-    let kp1 = generate_keypair()?;
-    let kp2 = generate_keypair()?;
-    let kp3 = generate_keypair()?;
+    let kp1 = generate_test_keypair()?;
+    let kp2 = generate_test_keypair()?;
+    let kp3 = generate_test_keypair()?;
 
     let message = b"multi recipient secret data";
     let mut encrypted = Vec::new();
@@ -339,10 +374,10 @@ fn test_multi_recipient_round_trip() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_multi_recipient_wrong_key() -> Result<(), Box<dyn Error>> {
-    let kp1 = generate_keypair()?;
-    let kp2 = generate_keypair()?;
-    let kp3 = generate_keypair()?;
-    let outsider = generate_keypair()?; // not included
+    let kp1 = generate_test_keypair()?;
+    let kp2 = generate_test_keypair()?;
+    let kp3 = generate_test_keypair()?;
+    let outsider = generate_test_keypair()?; // not included
 
     let message = b"top secret";
     let mut encrypted = Vec::new();
@@ -365,5 +400,31 @@ fn test_multi_recipient_wrong_key() -> Result<(), Box<dyn Error>> {
     let mut out_ok = Vec::new();
     decrypt_multiple_recipient(&kp2.private_key, &mut Cursor::new(encrypted), &mut out_ok)?;
     assert_eq!(out_ok, message);
+    Ok(())
+}
+
+
+#[cfg(any(feature = "dilithium2", feature = "dilithium3", feature = "dilithium5"))]
+#[test]
+fn test_keypair_serialization_with_signatures() -> Result<(), Box<dyn Error>> {
+    // Generate a keypair with signature keys
+    let keypair = generate_test_keypair()?;
+
+    // Serialize the keypair
+    let serialized = keypair.to_vec()?;
+
+    // Deserialize the keypair
+    let deserialized = crate::MlKemKeyPair::from_bytes(&serialized)?;
+
+    // Verify both KEM and signature components match
+    assert_eq!(keypair.public_key, deserialized.public_key);
+    assert_eq!(keypair.private_key, deserialized.private_key);
+    assert_eq!(keypair.public_sign_key, deserialized.public_sign_key);
+    assert_eq!(keypair.private_sign_key, deserialized.private_sign_key);
+
+    // Additional test: verify hashes match
+    assert_eq!(keypair.hash_hex(), deserialized.hash_hex());
+    assert_eq!(keypair.hash_decimal(), deserialized.hash_decimal());
+
     Ok(())
 }

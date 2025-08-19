@@ -19,7 +19,7 @@ exclude = [
 ]
 
 [features]
-default = ["mlkem768","recommended-buffer"]
+default = ["mlkem768","recommended-buffer", "dilithium3"]
 mlkem512 = []
 mlkem768 = []
 mlkem1024 = []
@@ -27,6 +27,9 @@ small-buffer = []
 recommended-buffer = []
 large-buffer = []
 medium-buffer = []
+dilithium2 = []
+dilithium3 = []
+dilithium5 = []
 
 [dependencies]
 anyhow = "1.0.99"
@@ -36,14 +39,14 @@ serde = { version = "1.0.219", features = ["derive"] }
 sha2 = "0.10.9"
 bincode = { version = "2.0.1", features = ["serde"] }
 serde_bytes = "0.11.17"
-oqs = { version = "0.11.0", default-features = false, features = ["ml_kem","serde"] }
+oqs = { version = "0.11.0", default-features = false, features = ["ml_kem","serde","dilithium"] }
 getrandom = "0.3.3"
-num-bigint = "0.4.6"
+num-bigint = { version = "0.4.6", features = ["serde"] }
+hex = "0.4.3"
 
 [dev-dependencies]
 tempfile = "3.20.0"
 criterion = { version = "3.0.3", package = "codspeed-criterion-compat" }
-hex = "0.4.3"
 
 
 [[bench]]

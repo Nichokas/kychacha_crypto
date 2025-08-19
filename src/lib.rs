@@ -91,6 +91,7 @@ mod key_exchange;
 #[cfg(test)]
 mod tests;
 mod types;
+mod signing;
 
 use anyhow::Result;
 use bincode::config::Config;
@@ -105,10 +106,10 @@ use encryption::*;
 use key_exchange::derive_chacha_key;
 pub use key_exchange::{generate_keypair, generate_keypair_with_level};
 use oqs;
-use oqs::kem;
+use oqs::{kem, sig};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
-pub use types::SecurityLevel;
+pub use types::{SecurityLevel, SignSecurityLevel};
 pub use types::{MlKemKeyPair, PublicKey, SecretKey};
 
 #[cfg(feature = "small-buffer")]
@@ -130,60 +131,87 @@ pub(crate) struct TestData {
     pub encrypted_data: Vec<u8>,
 }
 
-pub(crate) fn given_oqs() -> Result<(SecurityLevel, kem::Kem)> {
-    oqs::init();
-
-    #[cfg(feature = "mlkem512")]
-    {
-        return Ok((
-            SecurityLevel::MlKem512,
-            kem::Kem::new(kem::Algorithm::MlKem512)
-                .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-512: {}", e))?,
-        ));
-    }
-
-    #[cfg(feature = "mlkem768")]
-    {
-        return Ok((
-            SecurityLevel::MlKem768,
-            kem::Kem::new(kem::Algorithm::MlKem768)
-                .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-768: {}", e))?,
-        ));
-    }
-
-    #[cfg(feature = "mlkem1024")]
-    {
-        return Ok((
-            SecurityLevel::MlKem1024,
-            kem::Kem::new(kem::Algorithm::MlKem1024)
-                .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-1024: {}", e))?,
-        ));
-    }
-
+pub(crate) fn given_oqs() -> Result<(SecurityLevel, Option<SignSecurityLevel>, kem::Kem, Option<sig::Sig>)> {
     #[cfg(not(any(feature = "mlkem512", feature = "mlkem768", feature = "mlkem1024")))]
     {
         anyhow::bail!("No ML-KEM algorithm feature selected")
     }
+
+    oqs::init();
+    let mut lkem: Option<kem::Algorithm> = None;
+    let mut security: Option<SecurityLevel> = None;
+    let mut lsig: Option<sig::Algorithm> = None;
+    let mut signsecurity: Option<SignSecurityLevel> = None;
+    let mut sig_instance: Option<sig::Sig> = None;
+
+    #[cfg(feature = "mlkem512")]
+    {
+        lkem = Some(kem::Algorithm::MlKem512);
+        security = Some(SecurityLevel::MlKem512);
+    }
+    #[cfg(feature = "mlkem768")]
+    {
+        lkem = Some(kem::Algorithm::MlKem768);
+        security = Some(SecurityLevel::MlKem768);
+    }
+    #[cfg(feature = "mlkem1024")]
+    {
+        lkem = Some(kem::Algorithm::MlKem1024);
+        security = Some(SecurityLevel::MlKem1024);
+    }
+
+    #[cfg(feature = "dilithium2")]
+    {
+        lsig = Some(sig::Algorithm::Dilithium2);
+        signsecurity = Some(SignSecurityLevel::Dilithium2);
+    }
+    #[cfg(feature = "dilithium3")]
+    {
+        lsig = Some(sig::Algorithm::Dilithium3);
+        signsecurity = Some(SignSecurityLevel::Dilithium3);
+    }
+    #[cfg(feature = "dilithium5")]
+    {
+        lsig = Some(sig::Algorithm::Dilithium5);
+        signsecurity = Some(SignSecurityLevel::Dilithium5);
+    }
+
+    if let Some(alg) = lsig {
+        if let Ok(s) = sig::Sig::new(alg) {
+            sig_instance = Some(s);
+        }
+    }
+
+    Ok((security.unwrap(), signsecurity, kem::Kem::new(lkem.unwrap()).map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM: {}", e))?, sig_instance))
 }
 
-pub(crate) fn select_oqs(sec: &SecurityLevel) -> Result<kem::Kem> {
+pub(crate) fn select_oqs(sec: &SecurityLevel, sign_sec: Option<&SignSecurityLevel>) -> Result<(kem::Kem, Option<sig::Sig>)> {
     oqs::init();
-    if sec == &SecurityLevel::MlKem512 {
-        return kem::Kem::new(kem::Algorithm::MlKem512)
-            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-512: {}", e));
-    }
 
-    if sec == &SecurityLevel::MlKem768 {
-        return kem::Kem::new(kem::Algorithm::MlKem768)
-            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-768: {}", e));
-    }
+    // Select KEM algorithm based on security level
+    let kem = match sec {
+        SecurityLevel::MlKem512 => kem::Kem::new(kem::Algorithm::MlKem512)
+            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-512: {}", e))?,
+        SecurityLevel::MlKem768 => kem::Kem::new(kem::Algorithm::MlKem768)
+            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-768: {}", e))?,
+        SecurityLevel::MlKem1024 => kem::Kem::new(kem::Algorithm::MlKem1024)
+            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-1024: {}", e))?,
+    };
 
-    if sec == &SecurityLevel::MlKem1024 {
-        return kem::Kem::new(kem::Algorithm::MlKem1024)
-            .map_err(|e| anyhow::anyhow!("Failed to initialize ML-KEM-1024: {}", e));
-    }
+    let sig = if let Some(sign_level) = sign_sec {
+        let sig_alg = match sign_level {
+            SignSecurityLevel::Dilithium2 => sig::Algorithm::Dilithium2,
+            SignSecurityLevel::Dilithium3 => sig::Algorithm::Dilithium3,
+            SignSecurityLevel::Dilithium5 => sig::Algorithm::Dilithium5,
+        };
 
-    anyhow::bail!("No ML-KEM with the specified security level found.");
+        Some(sig::Sig::new(sig_alg)
+            .map_err(|e| anyhow::anyhow!("Failed to initialize signature algorithm: {}", e))?)
+    } else {
+        None
+    };
+
+    Ok((kem, sig))
 }
 
 fn select_bincode_config() -> Result<impl Config> {
@@ -242,7 +270,7 @@ pub fn encrypt_stream<R: Read, W: Write>(
     reader: &mut R,
     io_writer: &mut W,
 ) -> Result<()> {
-    let kem = select_oqs(&server_pubkey.security)?;
+    let (kem,_) = select_oqs(&server_pubkey.security, None)?;
 
     let (ct, ss) = kem
         .encapsulate(&server_pubkey.key)
@@ -277,7 +305,7 @@ pub fn encrypt_multiple_recipient<R: Read, W: Write>(
 
     let mut for_all_k: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     for pubk in server_pubkeys {
-        let kem = select_oqs(&pubk.security)?;
+        let (kem,_) = select_oqs(&pubk.security, None)?;
 
         let (ct, ss) = kem
             .encapsulate(&pubk.key)
@@ -342,7 +370,7 @@ pub fn decrypt_stream<R: Read, W: Write>(
     io_reader: &mut R,
     writer: &mut W,
 ) -> Result<()> {
-    let kem = select_oqs(&private_key.security)?;
+    let (kem,_) = select_oqs(&private_key.security, None)?;
 
     let mut reader = IoRWrapper(io_reader);
 
@@ -376,7 +404,7 @@ pub fn decrypt_multiple_recipient<R: Read, W: Write>(
     io_reader: &mut R,
     writer: &mut W,
 ) -> Result<()> {
-    let kem = select_oqs(&private_key.security)?;
+    let (kem,_) = select_oqs(&private_key.security, None)?;
     let mut reader = IoRWrapper(io_reader);
 
     let config = match select_bincode_config() {
