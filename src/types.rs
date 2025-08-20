@@ -16,14 +16,7 @@ fn hash_bytes_to_decimal_hex(bytes: &[u8]) -> (String, String) {
     (dec, hex)
 }
 
-/// SecurityLevel defines the parameter sets (security strengths) supported by the ML-KEM algorithm.
-///
-/// Each variant corresponds to an NIST PQC Round 3 Kyber parameter set.
-///
-/// # Variants
-/// - `MlKem512`: 512-bit security level
-/// - `MlKem768`: 768-bit security level
-/// - `MlKem1024`: 1024-bit security level
+/// Security levels for ML-KEM (Kyber) parameter sets.
 #[repr(u16)]
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum SecurityLevel {
@@ -40,30 +33,10 @@ pub enum SignSecurityLevel {
     Dilithium5 = 5,
 }
 
-/// SecretKey holds the private component of an ML-KEM key pair along with its security level.
-///
-/// Provides serialization (`to_vec`) and deserialization (`from_bytes`) helpers.
-///
-/// # Fields
-/// * `security`: The chosen `SecurityLevel`.
-/// * `key`: The underlying OQS secret key.
-///
-/// # Examples
-/// ```
-/// use kychacha_crypto::SecretKey;
-/// use kychacha_crypto::generate_keypair;
-///
-/// let kp = generate_keypair().unwrap();
-/// let sk = kp.private_key;
-/// let bytes = sk.to_vec().unwrap();
-/// let sk2 = SecretKey::from_bytes(&bytes).unwrap();
-/// assert_eq!(sk, sk2);
-/// ```
+/// ML-KEM secret key with associated security level.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SecretKey {
-    /// The security level associated with this secret key.
     pub security: SecurityLevel,
-    /// The underlying OQS secret key blob.
     pub key: libSecretKey,
 }
 
@@ -90,9 +63,7 @@ impl SecretKey {
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SignSecretKey {
-    /// The security level associated with this secret key.
     pub security: SignSecurityLevel,
-    /// The underlying OQS secret key blob.
     pub key: libSignSecretKey,
 }
 
@@ -117,30 +88,10 @@ impl SignSecretKey {
     }
 }
 
-/// PublicKey holds the public component of an ML-KEM key pair along with its security level.
-///
-/// Provides serialization (`to_vec`) and deserialization (`from_bytes`) helpers.
-///
-/// # Fields
-/// * `security`: The chosen `SecurityLevel`.
-/// * `key`: The underlying OQS public key.
-///
-/// # Examples
-/// ```
-/// use kychacha_crypto::PublicKey;
-/// use kychacha_crypto::generate_keypair;
-///
-/// let kp = generate_keypair().unwrap();
-/// let pk = kp.public_key;
-/// let bytes = pk.to_vec().unwrap();
-/// let pk2 = PublicKey::from_bytes(&bytes).unwrap();
-/// assert_eq!(pk, pk2);
-/// ```
+/// ML-KEM public key with associated security level.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct PublicKey {
-    /// The security level associated with this public key.
     pub security: SecurityLevel,
-    /// The underlying OQS public key blob.
     pub key: libPublicKey,
 }
 
@@ -167,9 +118,7 @@ impl PublicKey {
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SignPublicKey {
-    /// The security level associated with this public key.
     pub security: SignSecurityLevel,
-    /// The underlying OQS public key blob.
     pub key: libSignPublicKey,
 }
 
@@ -194,24 +143,7 @@ impl SignPublicKey {
     }
 }
 
-/// MlKemKeyPair contains both the private and public KEM keys for ML-KEM operations.
-///
-/// Provides serialization (`to_vec`) and deserialization (`from_bytes`) helpers.
-///
-/// # Fields
-/// * `private_key`: The `SecretKey` component.
-/// * `public_key`: The `PublicKey` component.
-///
-/// # Examples
-/// ```
-/// use kychacha_crypto::MlKemKeyPair;
-/// use kychacha_crypto::generate_keypair;
-///
-/// let kp = generate_keypair().unwrap();
-/// let bytes = kp.to_vec().unwrap();
-/// let kp2 = MlKemKeyPair::from_bytes(&bytes).unwrap();
-/// assert_eq!(kp, kp2);
-/// ```
+/// Combined ML-KEM (and optional Dilithium) keypair. Public hash covers only public material.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct MlKemKeyPair {
     pub private_key: SecretKey,

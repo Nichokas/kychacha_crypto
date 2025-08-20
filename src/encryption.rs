@@ -1,4 +1,4 @@
-//! Symmetric cypher using ChaCha20Poly1305 (AEAD).
+//! Symmetric encryption primitives (ChaCha20-Poly1305 streaming helpers).
 
 use crate::BUFFER_SIZE;
 use crate::IoRWrapper;
@@ -15,6 +15,7 @@ pub(crate) fn encrypt_with_key_stream<R: Read, W: Write>(
     reader: &mut R,
     writer: &mut W,
 ) -> Result<()> {
+    // Stream: write nonce once, then (len || ciphertext_chunk) pairs.
     let cipher = ChaCha20Poly1305::new_from_slice(key).context("Invalid key length")?;
 
     let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
@@ -47,6 +48,7 @@ pub(crate) fn decrypt_with_key_stream<R: Read, W: Write>(
     mut reader: IoRWrapper<R>,
     mut writer: W,
 ) -> Result<()> {
+    // Reverse of encrypt_with_key_stream: read length-prefixed ciphertext chunks under fixed nonce.
     let mut cipher = ChaCha20Poly1305::new_from_slice(key).context("Invalid key length")?;
 
     let nonce = Nonce::from_slice(nonce);

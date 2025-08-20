@@ -1,4 +1,4 @@
-//! Kyber-1024 key exchange implementation (NIST PQC Round 3)
+//! ML-KEM (Kyber) key exchange and keypair generation utilities.
 
 use crate::{MlKemKeyPair, PublicKey, SecretKey, SecurityLevel, SignSecurityLevel, given_oqs, select_oqs};
 
@@ -9,15 +9,9 @@ use oqs::kem::SharedSecret;
 use sha2::Sha256;
 use crate::types::{SignPublicKey, SignSecretKey};
 
-/// Derives 256-bit ChaCha20 key from Kyber shared secret
-///
-/// Uses HKDF-SHA256 with protocol-specific context
-///
-/// # Security
-/// Context string prevents key reuse in different protocol components
-///
-/// # Errors
-/// Returns error if HKDF expansion fails
+/// Derive a 32-byte ChaCha20-Poly1305 key from an ML-KEM shared secret via HKDF-SHA256
+/// with a fixed context string to avoid cross-protocol key reuse.
+/// Returns an error only if HKDF expansion fails.
 pub(crate) fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]> {
     let hk = Hkdf::<Sha256>::new(None, &shared_secret.into_vec());
     let mut okm = [0u8; 32];
@@ -26,21 +20,8 @@ pub(crate) fn derive_chacha_key(shared_secret: SharedSecret) -> Result<[u8; 32]>
     Ok(okm)
 }
 
-/// Generates ML-KEM keypair
-///
-/// # Example
-/// ```
-/// # use std::error::Error;
-/// # fn main() -> Result<(), Box<dyn Error>> {
-/// use kychacha_crypto::generate_keypair;
-///
-/// let keypair = generate_keypair()?;
-/// Ok(())
-/// # }
-/// ```
-///
-/// # Errors
-/// Returns error if keypair generation fails
+/// Generate a keypair using the crate's default (feature-selected) ML-KEM (and Dilithium if enabled).
+/// When signature features are enabled a signature keypair is also produced.
 pub fn generate_keypair() -> Result<MlKemKeyPair> {
     let (sec, ssec, _, _) = given_oqs()?;
 
@@ -57,10 +38,8 @@ pub fn generate_keypair() -> Result<MlKemKeyPair> {
     generate_keypair_with_level(&sec, None)
 }
 
-/// Generates an ML-KEM keypair for a specified security level (runtime selection).
-///
-/// This allows choosing the parameter set without relying on compile-time feature flags.
-/// You must ensure the crate was compiled with support for the desired level (enable the corresponding feature).
+/// Generate a keypair for a specific ML-KEM security level (and optional Dilithium level).
+/// The requested levels must be enabled at compile time via features.
 ///
 /// # Example
 /// ```

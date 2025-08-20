@@ -1,97 +1,40 @@
 // lib.rs
 
-//! # Features
-//! |Name|Default?|What does it do?                     |
-//! |----|--------|-------------------------------------|
-//! |mlkem512|x|Select Ml-Kem security level to 512 (private key size)|
-//! |mlkem768|✅|Select Ml-Kem security level to 768 (private key size)|
-//! |mlkem1024|x|Select Ml-Kem security level to 1024 (private key size)|
-//! |small-buffer|x|Use a 4 KB buffer for encryption and decryption (files < 1 MB), for environments with very restricted amount of ram|
-//! |recommended-buffer|✅|Use a 64 KB buffer for encryption and decryption (files < 100 MB), recommended value for most use cases.|
-//! |medium-buffer|x|Use a 8 MB buffer for encryption and decryption (files 100 MB–5 GB), recommended for large files: logs, CSV/JSON, et cetera.|
-//! |large-buffer|x|Use a 1GB buffer for encryption and decryption (files > 5 GB), recommended for extremely large files like backups and 4K/8K video without compression.|
-//! # A Simple Example
+//! Post-quantum hybrid encryption using ML-KEM (Kyber) + ChaCha20-Poly1305 with optional Dilithium signatures.
+//! Features choose KEM level and buffer size; defaults aim for balanced security and performance.
+//!
+//! Quick example:
 //! ```
-//! use std::error::Error;
-//! use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
 //! use std::io::Cursor;
-//!
-//! fn main() -> Result<(), Box<dyn Error>> {
-//!     // Generate keypairs for alice and bob
-//!     let alice_keypair = generate_keypair()?;
-//!     let bob_keypair = generate_keypair()?;
-//!
-//!     // sink for storing the encrypted data
-//!     let mut sink = Vec::new();
-//!
-//!     // encrypt the text to bob
-//!     encrypt_stream(bob_keypair.public_key, &mut Cursor::new(b"Hi bob! :D"), &mut sink)?;
-//!
-//!     let mut decrypted_bytes = Vec::new();
-//!
-//!     decrypt_stream(&bob_keypair.private_key, &mut Cursor::new(sink), &mut decrypted_bytes)?;
-//!
-//!     assert_eq!(String::from_utf8_lossy(&decrypted_bytes), "Hi bob! :D");
-//!     Ok(())
-//! }
+//! use kychacha_crypto::{generate_keypair, encrypt_stream, decrypt_stream};
+//! let kp = generate_keypair().unwrap();
+//! let mut ct = Vec::new();
+//! encrypt_stream(kp.public_key.clone(), &mut Cursor::new(b"hi"), &mut ct).unwrap();
+//! let mut pt = Vec::new();
+//! decrypt_stream(&kp.private_key, &mut Cursor::new(ct), &mut pt).unwrap();
+//! assert_eq!(&pt, b"hi");
 //! ```
+//! Multi-recipient encrypts once for many recipients (each gets a wrapped content key) and is O(n) only in header size.
 //!
-//! # A Example With files
-//!
-//! # Multi-recipient Encryption
-//! Encrypt once for N recipients (each gets a wrapped content key) and stream the payload only a single time.
-//! Internally: a random 32-byte content key (ChaCha20-Poly1305) is generated; for every recipient public key we perform KEM encapsulation and then AEAD-encrypt the content key with the derived symmetric key. The ciphertext holds: Vec<(kem_ciphertext, aead_wrap_of_content_key)> followed by the bulk-encrypted data.
-//!
-//! ## Example
-//! ```
-//! use std::error::Error;
-//! use std::io::Cursor;
-//! use kychacha_crypto::{
-//!     generate_keypair,
-//!     encrypt_multiple_recipient,
-//!     decrypt_multiple_recipient,
-//! };
-//!
-//! fn main() -> Result<(), Box<dyn Error>> {
-//!     // Generate recipients (alice, bob, carol)
-//!     let alice = generate_keypair()?;
-//!     let bob = generate_keypair()?;
-//!     let carol = generate_keypair()?;
-//!
-//!     let mut encrypted = Vec::new();
-//!     encrypt_multiple_recipient(
-//!         vec![alice.public_key.clone(), bob.public_key.clone(), carol.public_key.clone()],
-//!         &mut Cursor::new(b"group message"),
-//!         &mut encrypted,
-//!     )?;
-//!
-//!     // Any listed recipient can decrypt
-//!     let mut out = Vec::new();
-//!     decrypt_multiple_recipient(&bob.private_key, &mut Cursor::new(&encrypted), &mut out)?;
-//!     assert_eq!(b"group message", &out[..]);
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ## Security Notes
+//! # Security notes
 //! * Each recipient incurs one ML-KEM encapsulation (O(n)).
 //! * Payload is encrypted only once (constant time w.r.t recipients) with ChaCha20-Poly1305.
 //! * Unknown recipient keys simply fail to unwrap; no partial leakage.
 //! * Consider size: header grows roughly (kem_ct_len + 12 + 32 + 16) per recipient.
 //!
-//! ## When to use
+//! # When to use
 //! * Broadcast to small/medium groups (tens / low hundreds) efficiently.
 //! * Avoid re-encrypting large payloads per recipient.
 //!
-//! ## When not to use
+//! # When not to use
 //! * Extremely large recipient lists (may become bandwidth heavy) — consider distributing the symmetric key via another channel.
 
+use sha2::Digest;
 mod encryption;
 mod key_exchange;
 #[cfg(test)]
 mod tests;
 mod types;
-mod signing;
 
 use anyhow::Result;
 use bincode::config::Config;
@@ -109,8 +52,10 @@ use oqs;
 use oqs::{kem, sig};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Write};
+use sha2::Sha512;
 pub use types::{SecurityLevel, SignSecurityLevel};
 pub use types::{MlKemKeyPair, PublicKey, SecretKey};
+use crate::types::{SignPublicKey, SignSecretKey};
 
 #[cfg(feature = "small-buffer")]
 pub(crate) const BUFFER_SIZE: usize = 4 * 1024;
@@ -243,28 +188,7 @@ impl<R: Read> Reader for IoRWrapper<R> {
     }
 }
 
-/// Hybrid encryption with Kyber + ChaCha
-/// # Example
-/// ```
-/// # use std::error::Error;
-/// # fn main() -> Result<(), Box<dyn Error>> {
-/// use std::fs::File;
-/// use std::io::{Cursor, Write};
-/// use kychacha_crypto::{encrypt_stream, generate_keypair};
-///
-/// // Generate keypair
-/// let keypair = generate_keypair()?;
-///
-/// // Create file and get writer
-/// let mut file = File::create("encrypted.bin")?;
-///
-/// // Encrypt data
-/// encrypt_stream(keypair.public_key, &mut Cursor::new(b"file content example"), &mut file)?;
-///
-/// // Now the encrypted.bin file contains the encrypted data
-/// # Ok(())
-/// # }
-/// ```
+/// Hybrid encryption (KEM encapsulation + streaming AEAD). See crate docs for an example.
 pub fn encrypt_stream<R: Read, W: Write>(
     server_pubkey: PublicKey,
     reader: &mut R,
@@ -340,31 +264,7 @@ pub fn encrypt_multiple_recipient<R: Read, W: Write>(
     Ok(())
 }
 
-/// Decrypts data from a stream that implements std::io::Read
-///
-/// # Example showing file-based usage
-/// ```
-/// # use std::error::Error;
-/// # fn main() -> Result<(), Box<dyn Error>> {
-/// use std::fs::File;
-/// use std::io::Cursor;
-/// use kychacha_crypto::{decrypt_stream, encrypt_stream, generate_keypair};
-///
-/// // Generate keypair
-/// let keypair = generate_keypair()?;
-///
-/// // First, create some encrypted data
-/// let mut encrypted_data = Vec::new();
-/// encrypt_stream(keypair.public_key, &mut Cursor::new(b"hello world"), &mut encrypted_data)?;
-///
-/// // Now decrypt it
-/// let mut decrypted_data = Vec::new();
-/// decrypt_stream(&keypair.private_key, &mut Cursor::new(encrypted_data), &mut decrypted_data)?;
-///
-/// assert_eq!(String::from_utf8_lossy(&decrypted_data), "hello world");
-/// # Ok(())
-/// # }
-/// ```
+/// Decrypt counterpart to `encrypt_stream`.
 pub fn decrypt_stream<R: Read, W: Write>(
     private_key: &SecretKey,
     io_reader: &mut R,
@@ -456,12 +356,79 @@ pub fn decrypt_multiple_recipient<R: Read, W: Write>(
     Ok(())
 }
 
-/// Decrypts data from a byte slice.
-///
-/// # Deprecated
-///
-/// This function is deprecated and will be removed in future versions.
-/// Please use `decrypt_stream` instead.
+/// Stream-sign data (SHA-512 digest then Dilithium signature) writing a bincode-serialized signature.
+pub fn sign_stream<R: Read, W: Write>(private_sign_key: &SignSecretKey, reader: &mut R, writer: &mut W) -> Result<()>{
+    let (_, sig_opt) = select_oqs(&SecurityLevel::MlKem768, Some(&private_sign_key.security))?;
+    let sig = sig_opt.ok_or_else(|| anyhow::anyhow!("No signature algorithm available"))?;
+
+    let mut hasher = Sha512::new();
+
+    // Read and hash data in chunks
+    let mut buffer = vec![0u8; BUFFER_SIZE];
+    loop {
+        let bytes_read = reader.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    // Get the final hash
+    let hash = hasher.finalize();
+
+    // Sign the hash
+    let signature = sig.sign(hash.as_ref(), &private_sign_key.key)
+        .map_err(|e| anyhow::anyhow!("Failed to sign data: {}", e))?;
+
+    // Use bincode for structured serialization
+    let config = select_bincode_config()?;
+    let mut io_writer = IoWWrapper(writer);
+    encode_into_writer(signature.into_vec(), &mut io_writer, config)?;
+
+    Ok(())
+}
+
+/// Verify a detached stream signature created by `sign_stream`.
+pub fn verify_stream<R: Read, S: Read>(
+    public_sign_key: &SignPublicKey,
+    data_reader: &mut R,
+    signature_reader: &mut S
+) -> Result<bool> {
+    let (_, sig_opt) = select_oqs(&SecurityLevel::MlKem768, Some(&public_sign_key.security))?;
+    let sig = sig_opt.ok_or_else(|| anyhow::anyhow!("No signature algorithm available"))?;
+
+    let mut hasher = Sha512::new();
+
+    // Read and hash data in chunks
+    let mut buffer = vec![0u8; BUFFER_SIZE];
+    loop {
+        let bytes_read = data_reader.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    // Get the final hash
+    let hash = hasher.finalize();
+
+    // Deserialize signature using bincode
+    let config = select_bincode_config()?;
+    let mut io_reader = IoRWrapper(signature_reader);
+    let signature_bytes: Vec<u8> = decode_from_reader(&mut io_reader, config)?;
+
+    // Create signature from bytes
+    let signature = sig.signature_from_bytes(&signature_bytes)
+        .ok_or_else(|| anyhow::anyhow!("Invalid signature format"))?;
+
+    // Verify the signature
+    match sig.verify(hash.as_ref(), &signature, &public_sign_key.key) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false),
+    }
+}
+
+/// Deprecated: use `decrypt_stream`.
 #[deprecated(
     since = "4.2.0",
     note = "This function is deprecated because it's susceptible to OOM attacks. Use `decrypt_from_stream` instead."
@@ -472,12 +439,7 @@ pub fn decrypt(encrypted_data: &[u8], private_key: &SecretKey) -> Result<String>
     Ok(String::from_utf8_lossy(&buf).into())
 }
 
-/// Encrypts data from a &[[u8]].
-///
-/// # Deprecated
-///
-/// This function is deprecated and will be removed in future versions.
-/// Please use `encrypt_stream` instead.
+/// Deprecated: use `encrypt_stream`.
 #[deprecated(
     since = "4.2.0",
     note = "This function is deprecated because it's susceptible to OOM attacks. Use `decrypt_from_stream` instead."
