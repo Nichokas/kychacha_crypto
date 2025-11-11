@@ -572,7 +572,7 @@ dependencies = [
 
 [[package]]
 name = "kychacha_crypto"
-version = "6.0.0"
+version = "6.0.1"
 dependencies = [
  "anyhow",
  "bincode 2.0.1",
