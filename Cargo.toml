@@ -33,7 +33,7 @@ anyhow = "1.0.102"
 chacha20poly1305 = { version = "0.10.1", features = ["std"] }
 hkdf = "0.12.4"
 serde = { version = "1.0.228", features = ["derive"] }
-sha2 = "0.10.9"
+sha2 = "0.11.0"
 bincode = { version = "2.0.1", features = ["serde"] }
 serde_bytes = "0.11.19"
 oqs = { version = "0.11.0", default-features = false, features = ["ml_kem","serde"] }
